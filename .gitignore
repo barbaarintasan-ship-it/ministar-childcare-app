@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+dist/
+web-build/
+.env
+.env.local
+.env.production
+server/.env
+*.log
+.DS_Store
+Thumbs.db
+android/
+ios/
+*.orig.*

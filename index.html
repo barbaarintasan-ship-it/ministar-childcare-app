@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Star Childcare — Parent App</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nunito',sans-serif;display:flex;justify-content:center;padding:20px 10px 40px;background:#eef2f6;min-height:100vh;}
+.phone{width:390px;background:#f9fafb;border-radius:32px;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,0.16);align-self:flex-start;}
+.hdr{background:linear-gradient(135deg,#3da98a 0%,#2d8a70 100%);padding:18px 18px 20px;position:relative;overflow:hidden;}
+.star{position:absolute;color:#fff;opacity:0.3;animation:twinkle 1.8s ease-in-out infinite alternate;}
+@keyframes twinkle{from{opacity:0.12}to{opacity:0.5}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.card{background:#fff;border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);animation:fadeUp 0.3s ease both;}
+.tabs{display:flex;background:#fff;border-bottom:1px solid #f0f0f0;position:sticky;top:0;z-index:10;}
+.tab{flex:1;padding:10px 0 7px;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;color:#ccc;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color 0.2s;}
+.tab.active{color:#3da98a;}
+.tab-dot{width:4px;height:4px;border-radius:50%;background:#3da98a;opacity:0;transition:opacity 0.2s;}
+.tab.active .tab-dot{opacity:1;}
+.content{padding:13px 13px 28px;}
+.langbtn{padding:3px 10px;border-radius:14px;border:none;font-family:'Nunito',sans-serif;font-weight:800;font-size:10px;cursor:pointer;transition:all 0.2s;}
+.qbtn{padding:8px 12px;border-radius:28px;border:2px solid #3da98a;background:#fff;color:#3da98a;font-family:'Nunito',sans-serif;font-weight:700;font-size:10px;cursor:pointer;margin-bottom:5px;}
+.qbtn:hover{background:#3da98a;color:#fff;}
+.actrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f5f5f5;}
+.actrow:last-child{border:none;}
+.recv{background:#e1f5ee;border-radius:13px 13px 13px 3px;padding:9px 12px;max-width:80%;font-size:12px;font-weight:600;color:#333;line-height:1.5;}
+.sent{background:#faece7;border-radius:13px 13px 3px 13px;padding:9px 12px;max-width:80%;font-size:12px;font-weight:600;color:#333;margin-left:auto;}
+.minput{flex:1;padding:8px 12px;border-radius:28px;border:1.5px solid #e0e0e0;font-family:'Nunito',sans-serif;font-size:12px;outline:none;}
+.minput:focus{border-color:#3da98a;}
+.sbtn{padding:8px 14px;border-radius:28px;border:none;background:#e8633a;color:#fff;font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;cursor:pointer;}
+.bwrap{height:7px;background:#f0f0f0;border-radius:8px;overflow:hidden;}
+.sugg{padding:6px 11px;border-radius:18px;border:1.5px solid #e8e8e8;background:#fff;font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;color:#666;cursor:pointer;margin-bottom:5px;}
+.badge{display:inline-block;padding:2px 9px;border-radius:18px;font-size:9px;font-weight:800;}
+.logo-img{height:62px;width:62px;object-fit:contain;border-radius:12px;background:white;padding:5px;box-shadow:0 2px 8px rgba(0,0,0,0.15);flex-shrink:0;}
+.week-d{display:flex;flex-direction:column;align-items:center;flex:1;padding:6px 2px;border-radius:10px;}
+</style>
+</head>
+<body>
+<div class="phone" id="app"></div>
+
+<script>
+// Logo references the local logo.png file (full original quality)
+const LOGO = "logo.png";
+
+const T = {
+  en:{greeting:"Good morning",parent:"Sarah",child:"Emma",age:"3 years old",checkedIn:"Checked In",checkedInTime:"7:45 AM",moodLabel:"Today's Mood",mood:"Happy & Playful 😄",pickupLabel:"Pickup",pickupTime:"5:00 PM",weather:"🌤 Sunny today — Outdoor play at 3 PM",quickActions:["Request Early Pickup","Send a Note","Full Report"],upcomingLabel:"This Week",upcoming:[{d:"Mon",dt:"26",e:"Outdoor Play"},{d:"Tue",dt:"27",e:"Science Fun"},{d:"Wed",dt:"28",e:"Cooking"},{d:"Thu",dt:"29",e:"Photo Day 📸"},{d:"Fri",dt:"30",e:"Show & Tell"}],staffLabel:"Today's Staff",staff:["Ms. Patricia (Lead)","Ms. Rosa (Assist.)"],noticesLabel:"Notices",notices:["📸 Picture Day Friday May 29! Dress your little star nicely.","☀️ Please bring sunscreen for outdoor play this week."],mealsLabel:"Meals Today",meals:["🌅 Breakfast: Oatmeal & Fruit 🍓","🍎 Snack: Apple slices & Crackers","☀️ Lunch: Mac & Cheese 🧀"],napLabel:"Nap Time",nap:"12:30 – 2:15 PM (1h 45m)",wellnessLabel:"Daily Wellness",wellness:[{l:"Eating",v:90,c:"#3da98a"},{l:"Sleeping",v:75,c:"#378ADD"},{l:"Socializing",v:95,c:"#e8633a"},{l:"Learning",v:85,c:"#639922"}],teacherNote:"Ms. Patricia (Teacher)",noteText:"Emma had a wonderful day! She loved the finger painting and shared her artwork with all her friends. 🌟",activitiesLabel:"Today's Activities",activities:[{i:"🎨",t:"Art & Craft",d:"Finger painting",time:"9:00 AM"},{i:"📚",t:"Story Time",d:"The Hungry Caterpillar",time:"10:30 AM"},{i:"🧩",t:"Puzzle Play",d:"Shape sorting",time:"2:30 PM"},{i:"🎵",t:"Music & Dance",d:"Songs and movement",time:"3:30 PM"}],photosLabel:"Today's Memories",photosCount:"6 photos from today",msgFrom:"Ms. Patricia (Teacher)",msgTime:"2:10 PM",msgText:"Emma had a wonderful day! She loved the finger painting and shared her artwork with all her friends. 🌟",replyPlaceholder:"Write a message…",sendBtn:"Send →",suggestions:["Thanks! 😊","What time?","She loves art!","Great news!"],activeLabel:"Active",roomLabel:"Room 3 – Sunflower"},
+  es:{greeting:"Buenos días",parent:"Sarah",child:"Emma",age:"3 años",checkedIn:"Registrada",checkedInTime:"7:45 AM",moodLabel:"Estado de Hoy",mood:"Feliz y Juguetona 😄",pickupLabel:"Recogida",pickupTime:"5:00 PM",weather:"🌤 Soleado — Juego exterior a las 3 PM",quickActions:["Recogida Temprana","Enviar Nota","Reporte Completo"],upcomingLabel:"Esta Semana",upcoming:[{d:"Lun",dt:"26",e:"Aire Libre"},{d:"Mar",dt:"27",e:"Ciencias"},{d:"Mié",dt:"28",e:"Cocina"},{d:"Jue",dt:"29",e:"Fotos 📸"},{d:"Vie",dt:"30",e:"Muestra"}],staffLabel:"Personal de Hoy",staff:["Sra. Patricia (Titular)","Sra. Rosa (Asistente)"],noticesLabel:"Avisos",notices:["📸 ¡Día de fotos el viernes 29 de mayo! Viste a tu estrellita bonito.","☀️ Por favor traer protector solar esta semana."],mealsLabel:"Comidas del Día",meals:["🌅 Desayuno: Avena con Fruta 🍓","🍎 Merienda: Manzana y Galletas","☀️ Almuerzo: Mac & Queso 🧀"],napLabel:"Hora de Siesta",nap:"12:30 – 2:15 PM (1h 45m)",wellnessLabel:"Bienestar Diario",wellness:[{l:"Alimentación",v:90,c:"#3da98a"},{l:"Sueño",v:75,c:"#378ADD"},{l:"Socialización",v:95,c:"#e8633a"},{l:"Aprendizaje",v:85,c:"#639922"}],teacherNote:"Sra. Patricia (Maestra)",noteText:"¡Emma tuvo un día maravilloso! Le encantó la pintura con dedos y compartió su obra con todos sus amigos. 🌟",activitiesLabel:"Actividades de Hoy",activities:[{i:"🎨",t:"Arte y Manualidades",d:"Pintura con dedos",time:"9:00 AM"},{i:"📚",t:"Hora del Cuento",d:"La Oruga Hambrienta",time:"10:30 AM"},{i:"🧩",t:"Rompecabezas",d:"Clasificación de formas",time:"2:30 PM"},{i:"🎵",t:"Música y Baile",d:"Canciones y movimiento",time:"3:30 PM"}],photosLabel:"Recuerdos de Hoy",photosCount:"6 fotos de hoy",msgFrom:"Sra. Patricia (Maestra)",msgTime:"2:10 PM",msgText:"¡Emma tuvo un día maravilloso! Le encantó la pintura con dedos y compartió su obra con todos sus amigos. 🌟",replyPlaceholder:"Escribe un mensaje…",sendBtn:"Enviar →",suggestions:["¡Gracias! 😊","¿A qué hora?","¡Le encanta el arte!","¡Qué buena noticia!"],activeLabel:"Activa",roomLabel:"Salón 3 – Girasol"}
+};
+
+let lang='en', tab=0, messages=[], msgInput='';
+const C=['#e1f5ee','#faece7','#eaf3de','#e8f4fe'];
+const TC=['#1a6650','#8a3018','#3B6D11','#185FA5'];
+
+function render(){
+  const t=T[lang];
+  const labels = lang==='en' ? ['Home','Daily','Activities','Messages'] : ['Inicio','Reporte','Actividades','Mensajes'];
+  const icons=['🏠','📋','🎨','💬'];
+  let h=`
+  <div class="hdr">
+    <div class="star" style="top:8px;right:20px;font-size:11px;animation-duration:1.5s">★</div>
+    <div class="star" style="top:45px;right:52px;font-size:15px;animation-duration:2.1s">★</div>
+    <div class="star" style="top:22px;right:98px;font-size:9px;animation-duration:1.7s">★</div>
+    <div class="star" style="top:78px;right:18px;font-size:12px;animation-duration:2.4s">★</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="${LOGO}" class="logo-img" alt="Mini Star Childcare Logo">
+        <div>
+          <div style="color:#fff;font-size:18px;font-weight:900;letter-spacing:0.5px">MINI STAR</div>
+          <div style="font-size:9px;font-weight:900;letter-spacing:2.5px;background:#fff;color:#e8633a;display:inline-block;padding:2px 9px;border-radius:8px;margin-top:3px">CHILDCARE</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+        <div style="display:flex;background:rgba(255,255,255,0.2);border-radius:18px;padding:2px;gap:2px">
+          <button class="langbtn" onclick="switchLang('en')" style="background:${lang==='en'?'#fff':'transparent'};color:${lang==='en'?'#3da98a':'rgba(255,255,255,0.9)'}">EN</button>
+          <button class="langbtn" onclick="switchLang('es')" style="background:${lang==='es'?'#fff':'transparent'};color:${lang==='es'?'#3da98a':'rgba(255,255,255,0.9)'}">ES</button>
+        </div>
+        <div style="color:rgba(255,255,255,0.85);font-size:11px;font-weight:700">${t.greeting}, ${t.parent} 👋</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.15);border-radius:11px;padding:9px 13px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff"><div style="font-size:10px;opacity:0.8">${t.child} · ${t.age}</div><div style="font-size:12px;font-weight:800">✅ ${t.checkedIn} · ${t.checkedInTime}</div></div>
+      <div style="text-align:right;color:#fff"><div style="font-size:10px;opacity:0.8">${t.pickupLabel}</div><div style="font-size:12px;font-weight:800">${t.pickupTime}</div></div>
+    </div>
+  </div>
+  <div class="tabs">${icons.map((ic,i)=>`<button class="tab${tab===i?' active':''}" onclick="switchTab(${i})"><span style="font-size:16px">${ic}</span><span>${labels[i]}</span><span class="tab-dot"></span></button>`).join('')}</div>
+  <div class="content">`;
+
+  if(tab===0){
+    h+=`<div style="background:linear-gradient(90deg,#e1f5ee,#fff);border-radius:11px;padding:9px 13px;font-size:11px;font-weight:700;color:#3da98a;margin-bottom:12px;border:1px solid #3da98a22">${t.weather}</div>
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:10px;color:#ccc;font-weight:700">${t.moodLabel}</div><div style="font-size:16px;font-weight:900;color:#333;margin-top:2px">${t.mood}</div></div><div style="width:46px;height:46px;background:#faece7;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:24px">⭐</div></div></div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">${t.quickActions.map(a=>`<button class="qbtn">${a}</button>`).join('')}</div>
+    <div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:9px">📅 ${t.upcomingLabel}</div><div style="display:flex;gap:3px">${t.upcoming.map((d,i)=>`<div class="week-d" style="flex:1;background:${i===0?'#e1f5ee':'transparent'};border:2px solid ${i===0?'#3da98a':'transparent'}"><div style="font-size:9px;font-weight:700;color:${i===0?'#3da98a':'#ccc'}">${d.d}</div><div style="font-size:13px;font-weight:900;color:${i===0?'#3da98a':'#555'}">${d.dt}</div><div style="font-size:8px;font-weight:600;color:#999;text-align:center;line-height:1.3;margin-top:2px">${d.e}</div></div>`).join('')}</div></div>
+    <div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:9px">👩‍🏫 ${t.staffLabel}</div>${t.staff.map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:50%;background:${['#e1f5ee','#faece7'][i]};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:${['#3da98a','#e8633a'][i]};flex-shrink:0">${s[4]}</div><div style="font-size:11px;font-weight:700;color:#555">${s}</div></div>`).join('')}</div>
+    <div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:9px">📢 ${t.noticesLabel}</div>${t.notices.map((n,i)=>`<div style="background:${['#e1f5ee','#faece7'][i]};border-radius:9px;padding:9px 11px;margin-bottom:6px;font-size:11px;font-weight:600;color:${['#1a6650','#8a3018'][i]};border-left:3px solid ${['#3da98a','#e8633a'][i]}">${n}</div>`).join('')}</div>`;
+  }
+  if(tab===1){
+    h+=`<div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:9px">🍽 ${t.mealsLabel}</div>${t.meals.map((m,i)=>`<div style="padding:8px 11px;background:${i%2===0?'#f8f8f8':'#fff'};border-radius:7px;margin-bottom:5px;font-size:12px;font-weight:600;color:#444">${m}</div>`).join('')}</div>
+    <div class="card"><div style="display:flex;align-items:center;gap:11px"><div style="width:44px;height:44px;background:#e8f4fe;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px">😴</div><div><div style="font-size:10px;color:#ccc;font-weight:700">${t.napLabel}</div><div style="font-size:13px;font-weight:800;color:#333;margin-top:2px">${t.nap}</div></div></div></div>
+    <div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:12px">📊 ${t.wellnessLabel}</div>${t.wellness.map(w=>`<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:#555">${w.l}</span><span style="font-size:11px;font-weight:800;color:${w.c}">${w.v}%</span></div><div class="bwrap"><div style="height:100%;width:${w.v}%;background:${w.c};border-radius:8px"></div></div></div>`).join('')}</div>
+    <div class="card" style="background:linear-gradient(135deg,#e1f5ee,#fff);border:1px solid #3da98a33"><div style="font-size:10px;color:#3da98a;font-weight:800;margin-bottom:5px">✏️ ${t.teacherNote}</div><div style="font-size:12px;font-weight:600;color:#333;line-height:1.6">${t.noteText}</div></div>`;
+  }
+  if(tab===2){
+    h+=`<div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:7px">🌟 ${t.activitiesLabel}</div>${t.activities.map((a,i)=>`<div class="actrow"><div style="width:40px;height:40px;background:${C[i%4]};border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${a.i}</div><div style="flex:1"><div style="font-size:12px;font-weight:800;color:#333">${a.t}</div><div style="font-size:10px;color:#bbb;font-weight:600;margin-top:1px">${a.d}</div></div><span class="badge" style="background:${C[i%4]};color:${TC[i%4]}">${a.time}</span></div>`).join('')}</div>
+    <div class="card"><div style="font-size:11px;font-weight:800;color:#333;margin-bottom:9px">📸 ${t.photosLabel}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">${['🎨','🤸','📖','🧩','🎵','😄'].map((e,i)=>`<div style="aspect-ratio:1;background:${C[i%4]};border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:24px">${e}</div>`).join('')}</div><div style="font-size:10px;color:#bbb;text-align:center;margin-top:8px;font-weight:700">${t.photosCount}</div></div>`;
+  }
+  if(tab===3){
+    h+=`<div class="card" style="padding:12px 13px 13px">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #f0f0f0">
+        <div style="width:36px;height:36px;background:#e1f5ee;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px">👩‍🏫</div>
+        <div style="flex:1"><div style="font-weight:800;font-size:12px;color:#333">${t.msgFrom}</div><div style="font-size:9px;color:#bbb;font-weight:600">${t.activeLabel} · ${t.roomLabel}</div></div>
+        <span class="badge" style="background:#e1f5ee;color:#3da98a">● ${t.activeLabel}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:13px;min-height:140px">
+        <div><div class="recv">${t.msgText}</div><div style="font-size:9px;color:#ccc;font-weight:600;margin-top:3px;margin-left:3px">${t.msgTime}</div></div>
+        ${messages.map(m=>`<div><div class="sent">${m.text}</div><div style="font-size:9px;color:#ccc;font-weight:600;margin-top:3px;text-align:right;margin-right:3px">Now</div></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <input class="minput" id="msg-in" placeholder="${t.replyPlaceholder}" onkeydown="if(event.key==='Enter')sendMsg()">
+        <button class="sbtn" onclick="sendMsg()">${t.sendBtn}</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${t.suggestions.map(s=>`<button class="sugg" onclick="setSugg(${JSON.stringify(s)})">${s}</button>`).join('')}</div>`;
+  }
+  h+=`</div>`;
+  document.getElementById('app').innerHTML=h;
+  const inp=document.getElementById('msg-in');
+  if(inp){inp.value=msgInput;inp.addEventListener('input',e=>msgInput=e.target.value);}
+}
+function switchLang(l){lang=l;render();}
+function switchTab(i){tab=i;render();}
+function sendMsg(){
+  const inp=document.getElementById('msg-in');
+  const val=(inp?inp.value:msgInput).trim();
+  if(!val)return;
+  messages.push({text:val});msgInput='';render();
+  setTimeout(()=>{const c=document.querySelector('.content');if(c)c.scrollTop=c.scrollHeight;},50);
+}
+function setSugg(s){msgInput=s;render();setTimeout(()=>{const i=document.getElementById('msg-in');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);}
+render();
+</script>
+</body>
+</html>
