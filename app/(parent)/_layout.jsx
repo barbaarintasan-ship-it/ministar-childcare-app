@@ -80,15 +80,7 @@ export default function ParentLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="payments"
-        options={{
-          title: t('payments'),
-          tabBarIcon: ({ focused, color, size }) => (
-            <TabIcon name="card" focused={focused} color={color} size={size} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="payments" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="growth" options={{ href: null }} />
     </Tabs>

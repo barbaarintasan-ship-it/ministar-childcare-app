@@ -247,9 +247,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_child ON messages(child_id);
 CREATE INDEX IF NOT EXISTS idx_payments_parent ON payments(parent_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 
--- DEMO ADMIN ACCOUNT (password: demo123)
+-- DEMO ACCOUNTS (password: demo123)
 INSERT INTO profiles (email, password_hash, full_name, role) VALUES
-  ('admin@demo.com',   '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin User',    'admin'),
-  ('teacher@demo.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ms. Patricia Torres', 'teacher'),
-  ('parent@demo.com',  '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Sarah Johnson', 'parent')
-ON CONFLICT (email) DO NOTHING;
+  ('admin@demo.com',   '$2a$10$NeFUlr4XFCVXtbHHSaQj0.rdufFEYyYWw9TpfdzMgLih3xNU3zanu', 'Admin User',           'admin'),
+  ('teacher@demo.com', '$2a$10$NeFUlr4XFCVXtbHHSaQj0.rdufFEYyYWw9TpfdzMgLih3xNU3zanu', 'Ms. Patricia Torres',  'teacher'),
+  ('parent@demo.com',  '$2a$10$NeFUlr4XFCVXtbHHSaQj0.rdufFEYyYWw9TpfdzMgLih3xNU3zanu', 'Sarah Johnson',        'parent')
+ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;

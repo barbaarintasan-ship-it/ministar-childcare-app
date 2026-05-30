@@ -25,6 +25,11 @@ app.use('/api/reports', require('./routes/reports'));
 // 404 for unknown API routes
 app.use('/api/*', (req, res) => res.status(404).json({ error: 'API route not found' }));
 
+// Serve React Native Web (Expo) frontend
+const PUBLIC_DIR = path.join(__dirname, 'public');
+app.use(express.static(PUBLIC_DIR));
+app.get('*', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Mini Star API running on port ${PORT}`);

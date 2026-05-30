@@ -62,15 +62,7 @@ export default function AdminLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="billing"
-        options={{
-          title: t('billing'),
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'cash' : 'cash-outline'} size={size} color={color} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="billing" options={{ href: null }} />
     </Tabs>
   );
 }

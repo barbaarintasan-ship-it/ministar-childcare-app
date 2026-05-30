@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -73,8 +73,8 @@ export default function LoginScreen() {
       >
         {/* Header gradient */}
         <LinearGradient
-          colors={[COLORS.primary, COLORS.primaryDark]}
-          style={[styles.hero, { paddingTop: insets.top + 20 }]}
+          colors={['#ffffff', '#e8f8f4']}
+          style={[styles.hero, { paddingTop: insets.top + 10 }]}
         >
           {/* Top bar */}
           <View style={styles.topBar}>
@@ -82,23 +82,21 @@ export default function LoginScreen() {
               onPress={() => setLang(lang === 'en' ? 'es' : 'en')}
               style={styles.topBtn}
             >
-              <Text style={styles.topBtnText}>{lang === 'en' ? '🇪🇸 ES' : '🇺🇸 EN'}</Text>
+              <Text style={[styles.topBtnText, { color: COLORS.primary }]}>{lang === 'en' ? '🇪🇸 ES' : '🇺🇸 EN'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={toggleTheme} style={styles.topBtn}>
-              <Ionicons name={isDark ? 'sunny' : 'moon'} size={16} color="#fff" />
+              <Ionicons name={isDark ? 'sunny' : 'moon'} size={16} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
 
           {/* Logo */}
           <View style={styles.logoWrap}>
-            <View style={styles.logoBox}>
-              <Text style={styles.logoEmoji}>⭐</Text>
-            </View>
-            <Text style={styles.appName}>{t('appName').toUpperCase()}</Text>
-            <View style={styles.taglineBox}>
-              <Text style={styles.tagline}>CHILDCARE</Text>
-            </View>
-            <Text style={styles.appSub}>{t('appTagline')}</Text>
+            <Image
+              source={require('../logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.appSub, { color: COLORS.primary }]}>{t('appTagline')}</Text>
           </View>
         </LinearGradient>
 
@@ -223,7 +221,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   topBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: COLORS.primary + '15',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -235,22 +233,13 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     alignItems: 'center',
+    paddingBottom: 8,
   },
-  logoBox: {
-    width: 80,
-    height: 80,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+  logoImage: {
+    width: 180,
+    height: 160,
+    marginBottom: 8,
   },
-  logoEmoji: { fontSize: 40 },
   appName: {
     color: '#fff',
     fontSize: 28,

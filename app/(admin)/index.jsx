@@ -1,58 +1,51 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/contexts/AuthContext';
-import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { COLORS, getTheme } from '../../src/constants/colors';
-import Card from '../../src/components/common/Card';
-import Badge from '../../src/components/common/Badge';
-import { ADMIN_STATS, WEEKLY_ATTENDANCE, CHILDREN, INVOICES } from '../../src/data/mockData';
+import { ADMIN_STATS, WEEKLY_ATTENDANCE, CHILDREN } from '../../src/data/mockData';
 
 const { width } = Dimensions.get('window');
-const BAR_MAX_H = 80;
+const BAR_MAX_H = 72;
+
+const QUICK_ACTIONS = [
+  { icon: 'person-add',    label: 'Add Child', color: COLORS.primary, route: '/(admin)/children' },
+  { icon: 'person-circle', label: 'Add Staff', color: COLORS.teacher, route: '/(admin)/staff'    },
+  { icon: 'bar-chart',     label: 'Reports',   color: COLORS.admin,   route: '/(admin)/reports'  },
+  { icon: 'people',        label: 'All Children', color: '#10b981',   route: '/(admin)/children' },
+];
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const { t } = useLang();
   const { isDark, toggleTheme } = useTheme();
   const theme = getTheme(isDark);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const maxPresent = Math.max(...WEEKLY_ATTENDANCE.map(d => d.present));
-  const overdueCount = INVOICES.filter(i => i.status === 'overdue').length;
-
-  const quickStats = [
-    { label: t('totalChildren'), value: ADMIN_STATS.totalChildren, icon: 'people', color: COLORS.primary, route: '/(admin)/children' },
-    { label: t('totalStaff'), value: ADMIN_STATS.totalStaff, icon: 'person', color: COLORS.teacher, route: '/(admin)/staff' },
-    { label: t('attendanceRate'), value: ADMIN_STATS.attendanceRate + '%', icon: 'checkmark-circle', color: COLORS.success, route: '/(admin)/reports' },
-    { label: t('monthlyRevenue'), value: '$' + (ADMIN_STATS.monthlyRevenue / 1000).toFixed(1) + 'k', icon: 'cash', color: COLORS.accent, route: '/(admin)/billing' },
-  ];
+  const overdueCount = 0;
+  const maxPresent   = Math.max(...WEEKLY_ATTENDANCE.map(d => d.present));
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const attendancePct = Math.round((ADMIN_STATS.presentToday / ADMIN_STATS.totalChildren) * 100);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={[COLORS.admin, '#6d28d9']}
-        style={[styles.header, { paddingTop: insets.top + 12 }]}
-      >
+
+      {/* ─── HEADER ─── */}
+      <LinearGradient colors={[COLORS.admin, '#5b21b6']} style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greeting}>Admin Dashboard</Text>
-            <Text style={styles.name}>{user?.name} 👩‍💼</Text>
-            <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
-          </View>
+          <Image source={require('../../logo.png')} style={styles.logo} resizeMode="contain" tintColor="#fff" />
           <View style={styles.headerBtns}>
             <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
-              <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color="#fff" />
+              <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.iconBtn, { position: 'relative' }]}>
-              <Ionicons name="notifications" size={18} color="#fff" />
+            <TouchableOpacity style={styles.iconBtn}>
+              <Ionicons name="notifications-outline" size={18} color="#fff" />
               {overdueCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{overdueCount}</Text>
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{overdueCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -62,137 +55,157 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* Today's snapshot */}
+        <Text style={styles.adminLabel}>Admin Dashboard</Text>
+        <Text style={styles.adminName}>{user?.name} 👩‍💼</Text>
+        <Text style={styles.adminDate}>{today}</Text>
+
+        {/* Today's Snapshot */}
         <View style={styles.snapshot}>
-          <View style={styles.snapshotItem}>
-            <Text style={styles.snapshotNum}>{ADMIN_STATS.presentToday}</Text>
-            <Text style={styles.snapshotLabel}>Present</Text>
-          </View>
-          <View style={styles.snapshotDivider} />
-          <View style={styles.snapshotItem}>
-            <Text style={styles.snapshotNum}>{ADMIN_STATS.absentToday}</Text>
-            <Text style={styles.snapshotLabel}>Absent</Text>
-          </View>
-          <View style={styles.snapshotDivider} />
-          <View style={styles.snapshotItem}>
-            <Text style={styles.snapshotNum}>{ADMIN_STATS.staffOnDuty || 5}</Text>
-            <Text style={styles.snapshotLabel}>Staff On Duty</Text>
-          </View>
-          <View style={styles.snapshotDivider} />
-          <View style={styles.snapshotItem}>
-            <Text style={[styles.snapshotNum, { color: overdueCount > 0 ? '#fde68a' : '#fff' }]}>
-              {overdueCount}
-            </Text>
-            <Text style={styles.snapshotLabel}>Overdue Bills</Text>
-          </View>
+          {[
+            { value: ADMIN_STATS.presentToday,       label: 'Present',       color: '#d1fae5', text: '#065f46' },
+            { value: ADMIN_STATS.absentToday,         label: 'Absent',        color: '#fee2e2', text: '#991b1b' },
+            { value: ADMIN_STATS.staffOnDuty || 5,   label: 'Staff on Duty', color: '#dbeafe', text: '#1e40af' },
+            { value: overdueCount,                    label: 'Overdue Bills', color: overdueCount > 0 ? '#fef3c7' : '#d1fae5', text: overdueCount > 0 ? '#92400e' : '#065f46' },
+          ].map((s, i) => (
+            <View key={i} style={styles.snapCol}>
+              {i > 0 && <View style={styles.snapDivider} />}
+              <View style={[styles.snapItem, { backgroundColor: s.color }]}>
+                <Text style={[styles.snapValue, { color: s.text }]}>{s.value}</Text>
+                <Text style={[styles.snapLabel, { color: s.text }]}>{s.label}</Text>
+              </View>
+            </View>
+          ))}
         </View>
       </LinearGradient>
 
-      <View style={styles.content}>
-        {/* Stat cards */}
-        <View style={styles.statsGrid}>
-          {quickStats.map((stat, i) => (
+      <View style={styles.body}>
+
+        {/* ─── ALERT ─── */}
+        {overdueCount > 0 && (
+          <TouchableOpacity
+            onPress={() => router.push('/(admin)/billing')}
+            style={styles.alertBanner}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="alert-circle" size={20} color="#92400e" />
+            <Text style={styles.alertText}>
+              {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''} need{overdueCount === 1 ? 's' : ''} attention
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color="#92400e" />
+          </TouchableOpacity>
+        )}
+
+        {/* ─── KPI CARDS ─── */}
+        <View style={styles.kpiGrid}>
+          {[
+            { icon: 'people',          label: 'Total Children', value: ADMIN_STATS.totalChildren,        color: COLORS.primary, route: '/(admin)/children' },
+            { icon: 'person',          label: 'Total Staff',    value: ADMIN_STATS.totalStaff,           color: COLORS.teacher, route: '/(admin)/staff'    },
+            { icon: 'checkmark-circle',label: 'Attendance',     value: ADMIN_STATS.attendanceRate + '%', color: '#10b981',      route: '/(admin)/reports'  },
+            { icon: 'analytics',       label: 'Reports',        value: 'View',                           color: COLORS.admin,   route: '/(admin)/reports'  },
+          ].map((k, i) => (
             <TouchableOpacity
               key={i}
-              onPress={() => router.push(stat.route)}
-              style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => router.push(k.route)}
+              style={[styles.kpiCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              activeOpacity={0.8}
             >
-              <View style={[styles.statIcon, { backgroundColor: stat.color + '20' }]}>
-                <Ionicons name={stat.icon} size={20} color={stat.color} />
+              <View style={[styles.kpiIcon, { backgroundColor: k.color + '18' }]}>
+                <Ionicons name={k.icon} size={22} color={k.color} />
               </View>
-              <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
-              <Text style={[styles.statLabel, { color: theme.textMuted }]} numberOfLines={2}>{stat.label}</Text>
+              <Text style={[styles.kpiValue, { color: theme.text }]}>{k.value}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textMuted }]}>{k.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Weekly attendance chart */}
-        <Card>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Weekly Attendance</Text>
+        {/* ─── ATTENDANCE RATE BAR ─── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Attendance</Text>
+            <Text style={[styles.pctText, { color: COLORS.primary }]}>{attendancePct}%</Text>
+          </View>
+          <View style={[styles.attendBar, { backgroundColor: theme.border }]}>
+            <View style={[styles.attendFill, { width: `${attendancePct}%` }]} />
+          </View>
+          <Text style={[styles.attendCaption, { color: theme.textMuted }]}>
+            {ADMIN_STATS.presentToday} present · {ADMIN_STATS.absentToday} absent · {ADMIN_STATS.totalChildren} total
+          </Text>
+        </View>
+
+        {/* ─── WEEKLY CHART ─── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Attendance</Text>
           <View style={styles.barChart}>
             {WEEKLY_ATTENDANCE.map((day, i) => {
-              const h = (day.present / maxPresent) * BAR_MAX_H;
+              const barH = (day.present / maxPresent) * BAR_MAX_H;
+              const isToday = i === 0;
               return (
-                <View key={i} style={styles.barGroup}>
-                  <Text style={[styles.barValue, { color: COLORS.primary }]}>{day.present}</Text>
-                  <View style={[styles.barTrack, { height: BAR_MAX_H }]}>
-                    <View style={[styles.bar, { height: h, backgroundColor: COLORS.primary }]} />
-                    <View style={[styles.bar, { height: (day.absent / maxPresent) * BAR_MAX_H, backgroundColor: COLORS.error + '66' }]} />
+                <View key={i} style={styles.barCol}>
+                  <Text style={[styles.barNum, { color: isToday ? COLORS.primary : theme.textMuted }]}>{day.present}</Text>
+                  <View style={[styles.barTrack, { height: BAR_MAX_H, backgroundColor: theme.border }]}>
+                    <View style={[styles.barFill, {
+                      height: barH,
+                      backgroundColor: isToday ? COLORS.primary : COLORS.primary + '66',
+                      borderRadius: 6,
+                    }]} />
                   </View>
-                  <Text style={[styles.barLabel, { color: theme.textMuted }]}>{day.day}</Text>
+                  <Text style={[styles.barDay, { color: isToday ? COLORS.primary : theme.textMuted, fontWeight: isToday ? '900' : '600' }]}>
+                    {day.day}
+                  </Text>
                 </View>
               );
             })}
           </View>
-          <View style={styles.chartLegend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
-              <Text style={[styles.legendText, { color: theme.textMuted }]}>Present</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: COLORS.error + '66' }]} />
-              <Text style={[styles.legendText, { color: theme.textMuted }]}>Absent</Text>
-            </View>
+          <View style={styles.legend}>
+            <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
+            <Text style={[styles.legendText, { color: theme.textMuted }]}>Present · </Text>
+            <View style={[styles.legendDot, { backgroundColor: COLORS.error + '66' }]} />
+            <Text style={[styles.legendText, { color: theme.textMuted }]}>Absent (highlighted = today)</Text>
           </View>
-        </Card>
-
-        {/* Recent children */}
-        <Card>
-          <View style={styles.sectionRow}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>👶 Today's Roster</Text>
-            <TouchableOpacity onPress={() => router.push('/(admin)/children')}>
-              <Text style={[styles.viewAll, { color: COLORS.admin }]}>View All →</Text>
-            </TouchableOpacity>
-          </View>
-          {CHILDREN.slice(0, 4).map((child, i) => (
-            <View key={child.id} style={[styles.childRow, { borderBottomColor: theme.border, borderBottomWidth: i < 3 ? 1 : 0 }]}>
-              <Text style={{ fontSize: 22, marginRight: 10 }}>{child.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.childName, { color: theme.text }]}>{child.name}</Text>
-                <Text style={[styles.childInfo, { color: theme.textMuted }]}>{child.room} {child.roomEmoji} · {child.age} yrs</Text>
-              </View>
-              <Badge
-                label={child.status === 'checked_in' ? '● In' : child.status === 'absent' ? '● Absent' : '● Out'}
-                type={child.status === 'checked_in' ? 'success' : child.status === 'absent' ? 'error' : 'info'}
-              />
-            </View>
-          ))}
-        </Card>
-
-        {/* Pending actions */}
-        {overdueCount > 0 && (
-          <TouchableOpacity
-            onPress={() => router.push('/(admin)/billing')}
-            style={[styles.alertBanner, { backgroundColor: COLORS.errorLight, borderColor: COLORS.error + '44' }]}
-          >
-            <Ionicons name="alert-circle" size={20} color={COLORS.error} />
-            <Text style={[styles.alertText, { color: COLORS.error }]}>
-              {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''} need attention
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.error} />
-          </TouchableOpacity>
-        )}
-
-        {/* Quick links */}
-        <View style={styles.quickLinks}>
-          {[
-            { icon: 'person-add', label: 'Add Child', color: COLORS.primary, route: '/(admin)/children' },
-            { icon: 'person-circle', label: 'Add Staff', color: COLORS.teacher, route: '/(admin)/staff' },
-            { icon: 'document-text', label: 'Reports', color: COLORS.admin, route: '/(admin)/reports' },
-            { icon: 'cash', label: 'Billing', color: COLORS.accent, route: '/(admin)/billing' },
-          ].map((link, i) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => router.push(link.route)}
-              style={[styles.quickLink, { backgroundColor: theme.card, borderColor: theme.border }]}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: link.color + '20' }]}>
-                <Ionicons name={link.icon} size={20} color={link.color} />
-              </View>
-              <Text style={[styles.quickLabel, { color: theme.text }]}>{link.label}</Text>
-            </TouchableOpacity>
-          ))}
         </View>
+
+        {/* ─── QUICK ACTIONS ─── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
+          <View style={styles.actionsRow}>
+            {QUICK_ACTIONS.map((a, i) => (
+              <TouchableOpacity key={i} onPress={() => router.push(a.route)} style={styles.actionBtn} activeOpacity={0.75}>
+                <View style={[styles.actionIcon, { backgroundColor: a.color + '18' }]}>
+                  <Ionicons name={a.icon} size={22} color={a.color} />
+                </View>
+                <Text style={[styles.actionLabel, { color: theme.text }]}>{a.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* ─── TODAY'S ROSTER ─── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Roster</Text>
+            <TouchableOpacity onPress={() => router.push('/(admin)/children')}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.admin }}>View All →</Text>
+            </TouchableOpacity>
+          </View>
+          {CHILDREN.slice(0, 5).map((child, i) => {
+            const sc = { checked_in: '#10b981', absent: '#ef4444', checked_out: '#6b7280' }[child.status] || '#6b7280';
+            const sb = { checked_in: '#d1fae5', absent: '#fee2e2', checked_out: '#f3f4f6' }[child.status] || '#f3f4f6';
+            const sl = { checked_in: '● In', absent: '● Absent', checked_out: '● Out' }[child.status] || '—';
+            return (
+              <View key={child.id} style={[styles.rosterRow, { borderBottomColor: theme.border, borderBottomWidth: i < 4 ? 1 : 0 }]}>
+                <Text style={styles.rosterEmoji}>{child.emoji}</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.rosterName, { color: theme.text }]}>{child.name}</Text>
+                  <Text style={[styles.rosterMeta, { color: theme.textMuted }]}>{child.room} {child.roomEmoji} · {child.age} yrs</Text>
+                </View>
+                <View style={[styles.statusChip, { backgroundColor: sb }]}>
+                  <Text style={[styles.statusChipText, { color: sc }]}>{sl}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
       </View>
     </ScrollView>
   );
@@ -200,62 +213,69 @@ export default function AdminDashboard() {
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingBottom: 28 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  greeting: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600' },
-  name: { color: '#fff', fontSize: 20, fontWeight: '900', marginVertical: 2 },
-  date: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  logo: { width: 100, height: 40, opacity: 0.95 },
   headerBtns: { flexDirection: 'row', gap: 8 },
   iconBtn: {
     width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
-  badge: {
-    position: 'absolute', top: -3, right: -3, width: 14, height: 14,
-    backgroundColor: COLORS.accent, borderRadius: 7, alignItems: 'center', justifyContent: 'center',
+  notifBadge: {
+    position: 'absolute', top: -3, right: -3, width: 16, height: 16,
+    backgroundColor: COLORS.accent, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
   },
-  badgeText: { color: '#fff', fontSize: 8, fontWeight: '900' },
-  snapshot: {
-    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16, padding: 14,
-    flexDirection: 'row', alignItems: 'center',
-  },
-  snapshotItem: { flex: 1, alignItems: 'center' },
-  snapshotNum: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  snapshotLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '700', textAlign: 'center', marginTop: 2 },
-  snapshotDivider: { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.3)' },
-  content: { padding: 16 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
-  statCard: {
-    width: '47%', padding: 14, borderRadius: 16, borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
-  statIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  statValue: { fontSize: 22, fontWeight: '900', marginBottom: 2 },
-  statLabel: { fontSize: 11, fontWeight: '600' },
-  sectionTitle: { fontSize: 15, fontWeight: '900', marginBottom: 14 },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  viewAll: { fontSize: 13, fontWeight: '700' },
-  barChart: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', marginBottom: 12 },
-  barGroup: { flex: 1, alignItems: 'center', gap: 4 },
-  barValue: { fontSize: 10, fontWeight: '800' },
-  barTrack: { width: '100%', justifyContent: 'flex-end', gap: 2 },
-  bar: { width: '100%', borderRadius: 4, minHeight: 4 },
-  barLabel: { fontSize: 11, fontWeight: '700' },
-  chartLegend: { flexDirection: 'row', gap: 16 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12, fontWeight: '600' },
-  childRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  childName: { fontSize: 13, fontWeight: '800' },
-  childInfo: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+  notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+  adminLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
+  adminName: { color: '#fff', fontSize: 22, fontWeight: '900', marginVertical: 4 },
+  adminDate: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600', marginBottom: 18 },
+  snapshot: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 4, gap: 4 },
+  snapCol: { flex: 1, flexDirection: 'row' },
+  snapDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 6 },
+  snapItem: { flex: 1, borderRadius: 14, padding: 10, alignItems: 'center', gap: 2, marginLeft: 4 },
+  snapValue: { fontSize: 22, fontWeight: '900' },
+  snapLabel: { fontSize: 9, fontWeight: '700', textAlign: 'center', marginTop: 1 },
+  body: { padding: 16, gap: 14 },
   alertBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 14,
+    backgroundColor: '#fef3c7', borderRadius: 14, padding: 14,
+    borderWidth: 1.5, borderColor: '#fde68a',
   },
-  alertText: { flex: 1, fontSize: 13, fontWeight: '700' },
-  quickLinks: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  quickLink: {
-    flex: 1, alignItems: 'center', padding: 12, borderRadius: 14, borderWidth: 1, gap: 6,
+  alertText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#92400e' },
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  kpiCard: {
+    width: '47%', borderRadius: 18, padding: 16, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
   },
-  quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontSize: 11, fontWeight: '800', textAlign: 'center' },
+  kpiIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  kpiValue: { fontSize: 26, fontWeight: '900', marginBottom: 2 },
+  kpiLabel: { fontSize: 12, fontWeight: '600' },
+  card: {
+    borderRadius: 20, padding: 16, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '900' },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  pctText: { fontSize: 22, fontWeight: '900' },
+  attendBar: { height: 12, borderRadius: 6, marginBottom: 8, overflow: 'hidden' },
+  attendFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 6 },
+  attendCaption: { fontSize: 12, fontWeight: '600' },
+  barChart: { flexDirection: 'row', gap: 6, alignItems: 'flex-end', marginTop: 12, marginBottom: 10 },
+  barCol: { flex: 1, alignItems: 'center', gap: 4 },
+  barNum: { fontSize: 11, fontWeight: '800' },
+  barTrack: { width: '100%', borderRadius: 6, justifyContent: 'flex-end', overflow: 'hidden' },
+  barFill: { width: '100%' },
+  barDay: { fontSize: 11 },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 11, fontWeight: '600' },
+  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  actionBtn: { flex: 1, alignItems: 'center', gap: 8 },
+  actionIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  actionLabel: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  rosterRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
+  rosterEmoji: { fontSize: 26 },
+  rosterName: { fontSize: 14, fontWeight: '800' },
+  rosterMeta: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  statusChipText: { fontSize: 12, fontWeight: '800' },
 });

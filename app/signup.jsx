@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -77,7 +77,11 @@ export default function SignupScreen() {
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={styles.logoEmoji}>⭐</Text>
+            <Image
+              source={require('../logo.png')}
+              style={{ width: 120, height: 100, marginBottom: 8 }}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>{t('createAccount')}</Text>
           </View>
         </LinearGradient>
