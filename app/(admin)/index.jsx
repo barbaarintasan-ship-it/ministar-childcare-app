@@ -110,11 +110,6 @@ export default function AdminDashboard() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.navIconBtn}>
             <Ionicons name="notifications-outline" size={20} color={COLORS.admin} />
-            {overdueCount > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{overdueCount}</Text>
-              </View>
-            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={async () => { await logout(); router.replace('/login'); }} style={styles.navIconBtn}>
             <Ionicons name="log-out-outline" size={20} color={COLORS.admin} />
@@ -144,7 +139,7 @@ export default function AdminDashboard() {
             { value: stats.presentToday,     label: 'Present',       color: '#d1fae5', text: '#065f46' },
             { value: stats.absentToday,      label: 'Absent',        color: '#fee2e2', text: '#991b1b' },
             { value: stats.totalStaff,       label: 'Staff on Duty', color: '#dbeafe', text: '#1e40af' },
-            { value: overdueCount,                  label: 'Overdue Bills', color: overdueCount > 0 ? '#fef3c7' : '#d1fae5', text: overdueCount > 0 ? '#92400e' : '#065f46' },
+            { value: stats.totalChildren || 0, label: 'Total Children', color: '#ede9fe', text: '#5b21b6' },
           ].map((s, i) => (
             <View key={i} style={[styles.snapItem, { backgroundColor: s.color }]}>
               <Text style={[styles.snapValue, { color: s.text }]}>{s.value}</Text>
