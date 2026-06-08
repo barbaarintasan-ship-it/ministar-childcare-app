@@ -62,7 +62,6 @@ export default function AdminLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="billing" options={{ href: null }} />
     </Tabs>
   );
 }

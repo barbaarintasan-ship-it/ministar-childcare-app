@@ -42,14 +42,14 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/children
 router.post('/', auth, async (req, res) => {
   if (!['teacher', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
-  const { first_name, last_name, age, classroom_id, parent_id, allergies, emoji, enroll_date, date_of_birth } = req.body;
+  const { first_name, last_name, age, classroom_id, parent_id, allergies, emoji, enroll_date, date_of_birth, emergency_contact, emergency_phone } = req.body;
   try {
     const result = await db.query(
-      `INSERT INTO children (first_name,last_name,age,classroom_id,parent_id,allergies,emoji,enroll_date,date_of_birth,allergy_alert)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      `INSERT INTO children (first_name,last_name,age,classroom_id,parent_id,allergies,emoji,enroll_date,date_of_birth,allergy_alert,emergency_contact,emergency_phone)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
       [first_name, last_name, age || 3, classroom_id, parent_id, allergies || [], emoji || '👶',
        enroll_date || new Date().toISOString().split('T')[0], date_of_birth,
-       allergies && allergies.length > 0]
+       allergies && allergies.length > 0, emergency_contact || '', emergency_phone || '']
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -61,7 +61,8 @@ router.post('/', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   if (!['teacher', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   const fields = ['first_name','last_name','age','classroom_id','allergies','emoji','status',
-                  'checkin_time','checkout_time','mood','mood_emoji','teacher_note','medical_notes'];
+                  'checkin_time','checkout_time','mood','mood_emoji','teacher_note','medical_notes',
+                  'emergency_contact','emergency_phone'];
   const updates = [];
   const values = [];
   let i = 1;

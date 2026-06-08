@@ -31,6 +31,7 @@ export default function StaffScreen() {
     email: '', phone: '', status: 'active', certifications: '',
   });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
     Promise.all([api.getStaff(), api.getClassrooms()])
@@ -112,11 +113,14 @@ export default function StaffScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove', style: 'destructive', onPress: async () => {
+            setDeleting(member.id);
             try {
               await api.deleteStaff(member.id);
               setStaff(prev => prev.filter(s => s.id !== member.id));
             } catch (e) {
-              Alert.alert('Error', e.message);
+              Alert.alert('Error', e.message || 'Failed to remove staff');
+            } finally {
+              setDeleting(null);
             }
           }
         },
@@ -148,7 +152,11 @@ export default function StaffScreen() {
       <Header
         title={t('manageStaff')}
         rightComponent={
-          <TouchableOpacity onPress={openAdd} style={[styles.addBtn, { backgroundColor: COLORS.teacher }]}>
+          <TouchableOpacity
+            onPress={openAdd}
+            disabled={loading}
+            style={[styles.addBtn, { backgroundColor: loading ? theme.border : COLORS.teacher }]}
+          >
             <Ionicons name="add" size={18} color="#fff" />
           </TouchableOpacity>
         }
@@ -269,9 +277,18 @@ export default function StaffScreen() {
                   <Ionicons name="create-outline" size={14} color={COLORS.teacher} />
                   <Text style={[styles.actionText, { color: COLORS.teacher }]}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteStaff(member)} style={[styles.actionBtn, { backgroundColor: COLORS.errorLight }]}>
-                  <Ionicons name="trash-outline" size={14} color={COLORS.error} />
-                  <Text style={[styles.actionText, { color: COLORS.error }]}>Remove</Text>
+                <TouchableOpacity
+                  onPress={() => deleteStaff(member)}
+                  disabled={deleting === member.id}
+                  style={[styles.actionBtn, { backgroundColor: deleting === member.id ? theme.border : COLORS.errorLight }]}
+                >
+                  {deleting === member.id
+                    ? <ActivityIndicator size="small" color={COLORS.error} />
+                    : <>
+                        <Ionicons name="trash-outline" size={14} color={COLORS.error} />
+                        <Text style={[styles.actionText, { color: COLORS.error }]}>Remove</Text>
+                      </>
+                  }
                 </TouchableOpacity>
               </View>
             </View>

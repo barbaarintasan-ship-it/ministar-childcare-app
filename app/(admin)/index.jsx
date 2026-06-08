@@ -37,7 +37,6 @@ export default function AdminDashboard() {
     { icon: 'people-outline',        label: 'Children',     route: '/(admin)/children' },
     { icon: 'person-circle-outline', label: 'Staff',        route: '/(admin)/staff' },
     { icon: 'bar-chart-outline',     label: 'Reports',      route: '/(admin)/reports' },
-    { icon: 'cash-outline',          label: 'Billing',      route: '/(admin)/billing' },
     { icon: 'settings-outline',      label: 'Settings',     route: '/(admin)/settings' },
   ];
 
@@ -52,7 +51,6 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const overdueCount = 0;
   const maxPresent   = weeklyAtt.length > 0 ? Math.max(...weeklyAtt.map(d => parseInt(d.present) || 0)) : 1;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const attendancePct = stats.totalChildren > 0 ? Math.round((stats.presentToday / stats.totalChildren) * 100) : 0;
@@ -164,16 +162,6 @@ export default function AdminDashboard() {
 
       <View style={styles.body}>
 
-        {/* ── ALERT ── */}
-        {overdueCount > 0 && (
-          <TouchableOpacity onPress={() => router.push('/(admin)/billing')} style={styles.alertBanner} activeOpacity={0.85}>
-            <Ionicons name="alert-circle" size={20} color="#92400e" />
-            <Text style={styles.alertText}>
-              {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''} need attention
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color="#92400e" />
-          </TouchableOpacity>
-        )}
 
         {/* ── FEATURES GRID (website 2x2 checkmarks) ── */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -309,7 +297,6 @@ export default function AdminDashboard() {
           { icon: 'people',    label: 'Children', onPress: () => router.push('/(admin)/children') },
           { icon: 'person',    label: 'Staff',    onPress: () => router.push('/(admin)/staff')    },
           { icon: 'bar-chart', label: 'Reports',  onPress: () => router.push('/(admin)/reports')  },
-          { icon: 'settings',  label: 'Billing',  onPress: () => router.push('/(admin)/billing')  },
         ].map((a, i) => (
           <TouchableOpacity key={i} style={styles.bottomBarItem} onPress={a.onPress}>
             <Ionicons name={a.icon} size={22} color="#fff" />

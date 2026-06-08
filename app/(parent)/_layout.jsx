@@ -80,8 +80,7 @@ export default function ParentLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="payments" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
+<Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="growth" options={{ href: null }} />
     </Tabs>
   );

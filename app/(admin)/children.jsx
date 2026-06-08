@@ -25,6 +25,7 @@ export default function ChildrenScreen() {
   const [editChild, setEditChild] = useState(null);
   const [form, setForm] = useState({ name: '', age: '', room: '', parentName: '', parentEmail: '', parentPhone: '', allergies: '' });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
     Promise.all([api.getChildren(), api.getClassrooms()])
@@ -97,19 +98,22 @@ export default function ChildrenScreen() {
     }
   };
 
-  const deleteChild = (child) => {
+  const deleteChild = async (child) => {
     Alert.alert(
-      t('deleteChild'),
-      `Remove ${child.name}?`,
+      'Remove Child',
+      `Remove ${child.name} from the system?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove', style: 'destructive', onPress: async () => {
+            setDeleting(child.id);
             try {
               await api.deleteChild(child.id);
               setChildren(prev => prev.filter(c => c.id !== child.id));
             } catch (e) {
-              Alert.alert('Error', e.message);
+              Alert.alert('Error', e.message || 'Failed to remove child');
+            } finally {
+              setDeleting(null);
             }
           }
         },
@@ -122,7 +126,11 @@ export default function ChildrenScreen() {
       <Header
         title={t('manageChildren')}
         rightComponent={
-          <TouchableOpacity onPress={openAdd} style={[styles.addBtn, { backgroundColor: COLORS.primary }]}>
+          <TouchableOpacity
+            onPress={openAdd}
+            disabled={loading}
+            style={[styles.addBtn, { backgroundColor: loading ? theme.border : COLORS.primary }]}
+          >
             <Ionicons name="add" size={18} color="#fff" />
           </TouchableOpacity>
         }
@@ -205,9 +213,18 @@ export default function ChildrenScreen() {
                 <Ionicons name="create-outline" size={14} color={COLORS.teacher} />
                 <Text style={[styles.actionText, { color: COLORS.teacher }]}>Edit</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteChild(child)} style={[styles.actionBtn, { backgroundColor: COLORS.errorLight }]}>
-                <Ionicons name="trash-outline" size={14} color={COLORS.error} />
-                <Text style={[styles.actionText, { color: COLORS.error }]}>Remove</Text>
+              <TouchableOpacity
+                onPress={() => deleteChild(child)}
+                disabled={deleting === child.id}
+                style={[styles.actionBtn, { backgroundColor: deleting === child.id ? theme.border : COLORS.errorLight }]}
+              >
+                {deleting === child.id
+                  ? <ActivityIndicator size="small" color={COLORS.error} />
+                  : <>
+                      <Ionicons name="trash-outline" size={14} color={COLORS.error} />
+                      <Text style={[styles.actionText, { color: COLORS.error }]}>Remove</Text>
+                    </>
+                }
               </TouchableOpacity>
             </View>
           </View>
