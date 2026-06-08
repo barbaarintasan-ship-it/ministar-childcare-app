@@ -21,6 +21,8 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/classrooms', require('./routes/classrooms'));
+app.use('/api/seed', require('./routes/seed'));
 
 // 404 for unknown API routes
 app.use('/api/*', (req, res) => res.status(404).json({ error: 'API route not found' }));
