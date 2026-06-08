@@ -12,10 +12,10 @@ const { width } = Dimensions.get('window');
 const BAR_MAX_H = 72;
 
 const QUICK_ACTIONS = [
-  { icon: 'person-add',    label: 'Add Child', color: COLORS.primary, route: '/(admin)/children' },
-  { icon: 'person-circle', label: 'Add Staff', color: COLORS.teacher, route: '/(admin)/staff'    },
-  { icon: 'bar-chart',     label: 'Reports',   color: COLORS.admin,   route: '/(admin)/reports'  },
-  { icon: 'people',        label: 'All Children', color: '#10b981',   route: '/(admin)/children' },
+  { icon: 'person-add',    label: 'Add Child',    color: COLORS.primary, route: '/(admin)/children' },
+  { icon: 'person-circle', label: 'Add Staff',    color: COLORS.teacher, route: '/(admin)/staff'    },
+  { icon: 'bar-chart',     label: 'Reports',      color: COLORS.admin,   route: '/(admin)/reports'  },
+  { icon: 'people',        label: 'All Children', color: '#10b981',      route: '/(admin)/children' },
 ];
 
 export default function AdminDashboard() {
@@ -33,75 +33,107 @@ export default function AdminDashboard() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} showsVerticalScrollIndicator={false}>
 
-      {/* ─── HEADER ─── */}
-      <LinearGradient colors={[COLORS.admin, '#5b21b6']} style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.headerTop}>
-          <Image source={require('../../logo.png')} style={styles.logo} resizeMode="contain" tintColor="#fff" />
-          <View style={styles.headerBtns}>
-            <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
-              <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="notifications-outline" size={18} color="#fff" />
-              {overdueCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{overdueCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={logout} style={styles.iconBtn}>
-              <Ionicons name="log-out-outline" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
+      {/* ── NAVBAR (website style) ── */}
+      <View style={[styles.navbar, { paddingTop: insets.top + 10, backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={styles.navIconBtn}>
+          <Ionicons name="menu" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Image source={require('../../logo.png')} style={styles.navLogo} resizeMode="contain" />
+        <View style={styles.navRight}>
+          <TouchableOpacity onPress={toggleTheme} style={styles.navIconBtn}>
+            <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={COLORS.admin} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navIconBtn}>
+            <Ionicons name="notifications-outline" size={20} color={COLORS.admin} />
+            {overdueCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{overdueCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.navIconBtn}>
+            <Ionicons name="log-out-outline" size={20} color={COLORS.admin} />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        <Text style={styles.adminLabel}>Admin Dashboard</Text>
-        <Text style={styles.adminName}>{user?.name} 👩‍💼</Text>
-        <Text style={styles.adminDate}>{today}</Text>
+      {/* ── NAV BUTTONS (website style: filled + outlined pill) ── */}
+      <View style={[styles.navButtons, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={[styles.btnFilled, { backgroundColor: COLORS.admin }]} onPress={() => router.push('/(admin)/children')}>
+          <Text style={styles.btnFilledText}>Children  →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.btnOutline, { borderColor: COLORS.admin }]} onPress={() => router.push('/(admin)/reports')}>
+          <Text style={[styles.btnOutlineText, { color: COLORS.admin }]}>Reports</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Today's Snapshot */}
+      {/* ── HERO (keeps purple gradient, website layout) ── */}
+      <LinearGradient colors={[COLORS.admin, '#5b21b6']} style={styles.hero}>
+        <Text style={styles.heroTag}>ADMIN DASHBOARD</Text>
+        <Text style={styles.heroTitle}>{user?.name} 👩‍💼</Text>
+        <Text style={styles.heroSub}>{today}</Text>
+
+        {/* Snapshot stats (website card style) */}
         <View style={styles.snapshot}>
           {[
-            { value: ADMIN_STATS.presentToday,       label: 'Present',       color: '#d1fae5', text: '#065f46' },
-            { value: ADMIN_STATS.absentToday,         label: 'Absent',        color: '#fee2e2', text: '#991b1b' },
-            { value: ADMIN_STATS.staffOnDuty || 5,   label: 'Staff on Duty', color: '#dbeafe', text: '#1e40af' },
-            { value: overdueCount,                    label: 'Overdue Bills', color: overdueCount > 0 ? '#fef3c7' : '#d1fae5', text: overdueCount > 0 ? '#92400e' : '#065f46' },
+            { value: ADMIN_STATS.presentToday,     label: 'Present',       color: '#d1fae5', text: '#065f46' },
+            { value: ADMIN_STATS.absentToday,       label: 'Absent',        color: '#fee2e2', text: '#991b1b' },
+            { value: ADMIN_STATS.staffOnDuty || 5,  label: 'Staff on Duty', color: '#dbeafe', text: '#1e40af' },
+            { value: overdueCount,                  label: 'Overdue Bills', color: overdueCount > 0 ? '#fef3c7' : '#d1fae5', text: overdueCount > 0 ? '#92400e' : '#065f46' },
           ].map((s, i) => (
-            <View key={i} style={styles.snapCol}>
-              {i > 0 && <View style={styles.snapDivider} />}
-              <View style={[styles.snapItem, { backgroundColor: s.color }]}>
-                <Text style={[styles.snapValue, { color: s.text }]}>{s.value}</Text>
-                <Text style={[styles.snapLabel, { color: s.text }]}>{s.label}</Text>
-              </View>
+            <View key={i} style={[styles.snapItem, { backgroundColor: s.color }]}>
+              <Text style={[styles.snapValue, { color: s.text }]}>{s.value}</Text>
+              <Text style={[styles.snapLabel, { color: s.text }]}>{s.label}</Text>
             </View>
           ))}
+        </View>
+
+        {/* Stars (website style) */}
+        <View style={styles.starsRow}>
+          <Text style={styles.starsText}>Parents love us  </Text>
+          <Text style={{ fontSize: 14 }}>⭐⭐⭐⭐⭐</Text>
         </View>
       </LinearGradient>
 
       <View style={styles.body}>
 
-        {/* ─── ALERT ─── */}
+        {/* ── ALERT ── */}
         {overdueCount > 0 && (
-          <TouchableOpacity
-            onPress={() => router.push('/(admin)/billing')}
-            style={styles.alertBanner}
-            activeOpacity={0.85}
-          >
+          <TouchableOpacity onPress={() => router.push('/(admin)/billing')} style={styles.alertBanner} activeOpacity={0.85}>
             <Ionicons name="alert-circle" size={20} color="#92400e" />
             <Text style={styles.alertText}>
-              {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''} need{overdueCount === 1 ? 's' : ''} attention
+              {overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''} need attention
             </Text>
             <Ionicons name="chevron-forward" size={16} color="#92400e" />
           </TouchableOpacity>
         )}
 
-        {/* ─── KPI CARDS ─── */}
+        {/* ── FEATURES GRID (website 2x2 checkmarks) ── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Centre Status</Text>
+          <View style={styles.featuresGrid}>
+            {['Licensed & Certified Staff', 'Small Class Sizes', 'Structured Curriculum', 'Now Enrolling'].map((f, i) => (
+              <View key={i} style={styles.featureItem}>
+                <View style={[styles.featureCheck, { backgroundColor: COLORS.admin }]}>
+                  <Ionicons name="checkmark" size={14} color="#fff" />
+                </View>
+                <Text style={[styles.featureText, { color: theme.text }]}>{f}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── KPI CARDS (website-style grid) ── */}
+        <Text style={[styles.sectionTitleLg, { color: theme.text }]}>Our Programs</Text>
+        <Text style={[styles.sectionSub, { color: theme.textSecondary }]}>
+          Overview of children, staff, and attendance across all programs.
+        </Text>
         <View style={styles.kpiGrid}>
           {[
-            { icon: 'people',          label: 'Total Children', value: ADMIN_STATS.totalChildren,        color: COLORS.primary, route: '/(admin)/children' },
-            { icon: 'person',          label: 'Total Staff',    value: ADMIN_STATS.totalStaff,           color: COLORS.teacher, route: '/(admin)/staff'    },
-            { icon: 'checkmark-circle',label: 'Attendance',     value: ADMIN_STATS.attendanceRate + '%', color: '#10b981',      route: '/(admin)/reports'  },
-            { icon: 'analytics',       label: 'Reports',        value: 'View',                           color: COLORS.admin,   route: '/(admin)/reports'  },
+            { icon: 'people',           label: 'Total Children', value: ADMIN_STATS.totalChildren,        color: COLORS.primary, route: '/(admin)/children' },
+            { icon: 'person',           label: 'Total Staff',    value: ADMIN_STATS.totalStaff,           color: COLORS.teacher, route: '/(admin)/staff'    },
+            { icon: 'checkmark-circle', label: 'Attendance',     value: ADMIN_STATS.attendanceRate + '%', color: '#10b981',      route: '/(admin)/reports'  },
+            { icon: 'analytics',        label: 'Reports',        value: 'View',                           color: COLORS.admin,   route: '/(admin)/reports'  },
           ].map((k, i) => (
             <TouchableOpacity
               key={i}
@@ -114,25 +146,28 @@ export default function AdminDashboard() {
               </View>
               <Text style={[styles.kpiValue, { color: theme.text }]}>{k.value}</Text>
               <Text style={[styles.kpiLabel, { color: theme.textMuted }]}>{k.label}</Text>
+              <TouchableOpacity style={[styles.learnMoreBtn, { backgroundColor: k.color }]} onPress={() => router.push(k.route)}>
+                <Text style={styles.learnMoreText}>View →</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* ─── ATTENDANCE RATE BAR ─── */}
+        {/* ── ATTENDANCE RATE ── */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.sectionRow}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Attendance</Text>
-            <Text style={[styles.pctText, { color: COLORS.primary }]}>{attendancePct}%</Text>
+            <Text style={[styles.pctText, { color: COLORS.admin }]}>{attendancePct}%</Text>
           </View>
           <View style={[styles.attendBar, { backgroundColor: theme.border }]}>
-            <View style={[styles.attendFill, { width: `${attendancePct}%` }]} />
+            <View style={[styles.attendFill, { width: `${attendancePct}%`, backgroundColor: COLORS.admin }]} />
           </View>
           <Text style={[styles.attendCaption, { color: theme.textMuted }]}>
             {ADMIN_STATS.presentToday} present · {ADMIN_STATS.absentToday} absent · {ADMIN_STATS.totalChildren} total
           </Text>
         </View>
 
-        {/* ─── WEEKLY CHART ─── */}
+        {/* ── WEEKLY CHART ── */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Attendance</Text>
           <View style={styles.barChart}>
@@ -141,30 +176,23 @@ export default function AdminDashboard() {
               const isToday = i === 0;
               return (
                 <View key={i} style={styles.barCol}>
-                  <Text style={[styles.barNum, { color: isToday ? COLORS.primary : theme.textMuted }]}>{day.present}</Text>
+                  <Text style={[styles.barNum, { color: isToday ? COLORS.admin : theme.textMuted }]}>{day.present}</Text>
                   <View style={[styles.barTrack, { height: BAR_MAX_H, backgroundColor: theme.border }]}>
                     <View style={[styles.barFill, {
-                      height: barH,
-                      backgroundColor: isToday ? COLORS.primary : COLORS.primary + '66',
-                      borderRadius: 6,
+                      height: barH, borderRadius: 6,
+                      backgroundColor: isToday ? COLORS.admin : COLORS.admin + '66',
                     }]} />
                   </View>
-                  <Text style={[styles.barDay, { color: isToday ? COLORS.primary : theme.textMuted, fontWeight: isToday ? '900' : '600' }]}>
+                  <Text style={[styles.barDay, { color: isToday ? COLORS.admin : theme.textMuted, fontWeight: isToday ? '900' : '600' }]}>
                     {day.day}
                   </Text>
                 </View>
               );
             })}
           </View>
-          <View style={styles.legend}>
-            <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
-            <Text style={[styles.legendText, { color: theme.textMuted }]}>Present · </Text>
-            <View style={[styles.legendDot, { backgroundColor: COLORS.error + '66' }]} />
-            <Text style={[styles.legendText, { color: theme.textMuted }]}>Absent (highlighted = today)</Text>
-          </View>
         </View>
 
-        {/* ─── QUICK ACTIONS ─── */}
+        {/* ── QUICK ACTIONS (website-style cards) ── */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
           <View style={styles.actionsRow}>
@@ -179,7 +207,7 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* ─── TODAY'S ROSTER ─── */}
+        {/* ── TODAY'S ROSTER ── */}
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.sectionRow}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Roster</Text>
@@ -207,33 +235,62 @@ export default function AdminDashboard() {
         </View>
 
       </View>
+
+      {/* ── BOTTOM ACTION BAR (website style) ── */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 10, backgroundColor: COLORS.admin }]}>
+        {[
+          { icon: 'people',    label: 'Children', onPress: () => router.push('/(admin)/children') },
+          { icon: 'person',    label: 'Staff',    onPress: () => router.push('/(admin)/staff')    },
+          { icon: 'bar-chart', label: 'Reports',  onPress: () => router.push('/(admin)/reports')  },
+          { icon: 'settings',  label: 'Billing',  onPress: () => router.push('/(admin)/billing')  },
+        ].map((a, i) => (
+          <TouchableOpacity key={i} style={styles.bottomBarItem} onPress={a.onPress}>
+            <Ionicons name={a.icon} size={22} color="#fff" />
+            <Text style={styles.bottomBarLabel}>{a.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: 20, paddingBottom: 28 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  logo: { width: 100, height: 40, opacity: 0.95 },
-  headerBtns: { flexDirection: 'row', gap: 8 },
-  iconBtn: {
-    width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+  // Navbar
+  navbar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1,
   },
+  navLogo: { width: 130, height: 48 },
+  navRight: { flexDirection: 'row', gap: 2 },
+  navIconBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   notifBadge: {
-    position: 'absolute', top: -3, right: -3, width: 16, height: 16,
-    backgroundColor: COLORS.accent, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+    position: 'absolute', top: 5, right: 5, width: 14, height: 14,
+    backgroundColor: COLORS.accent, borderRadius: 7, alignItems: 'center', justifyContent: 'center',
   },
-  notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
-  adminLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
-  adminName: { color: '#fff', fontSize: 22, fontWeight: '900', marginVertical: 4 },
-  adminDate: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600', marginBottom: 18 },
-  snapshot: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, padding: 4, gap: 4 },
-  snapCol: { flex: 1, flexDirection: 'row' },
-  snapDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 6 },
-  snapItem: { flex: 1, borderRadius: 14, padding: 10, alignItems: 'center', gap: 2, marginLeft: 4 },
+  notifBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900' },
+  navButtons: {
+    flexDirection: 'row', gap: 10, paddingHorizontal: 16,
+    paddingVertical: 10, borderBottomWidth: 1,
+  },
+  btnFilled: { flex: 1, borderRadius: 30, paddingVertical: 11, alignItems: 'center' },
+  btnFilledText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  btnOutline: { flex: 1, borderWidth: 1.5, borderRadius: 30, paddingVertical: 11, alignItems: 'center' },
+  btnOutlineText: { fontWeight: '800', fontSize: 13 },
+
+  // Hero (keeps purple gradient)
+  hero: { paddingHorizontal: 20, paddingVertical: 24 },
+  heroTag: { fontSize: 11, fontWeight: '800', letterSpacing: 2, color: 'rgba(255,255,255,0.75)', marginBottom: 6 },
+  heroTitle: { fontSize: 24, fontWeight: '900', color: '#fff', marginBottom: 4 },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600', marginBottom: 18 },
+  snapshot: { flexDirection: 'row', gap: 6, marginBottom: 14 },
+  snapItem: { flex: 1, borderRadius: 14, padding: 10, alignItems: 'center', gap: 2 },
   snapValue: { fontSize: 22, fontWeight: '900' },
   snapLabel: { fontSize: 9, fontWeight: '700', textAlign: 'center', marginTop: 1 },
+  starsRow: { flexDirection: 'row', alignItems: 'center' },
+  starsText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+
+  // Body
   body: { padding: 16, gap: 14 },
   alertBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -241,41 +298,64 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: '#fde68a',
   },
   alertText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#92400e' },
-  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  card: {
+    borderRadius: 20, padding: 16, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '900', marginBottom: 14 },
+  sectionTitleLg: { fontSize: 26, fontWeight: '900', paddingHorizontal: 2, marginBottom: 6 },
+  sectionSub: { fontSize: 14, lineHeight: 21, paddingHorizontal: 2, marginBottom: 12 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  pctText: { fontSize: 22, fontWeight: '900' },
+
+  // Features grid (website 2x2)
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  featureItem: { width: '46%', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featureCheck: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  featureText: { flex: 1, fontSize: 13, fontWeight: '700', lineHeight: 19 },
+
+  // KPI cards (website program-card style)
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 2 },
   kpiCard: {
-    width: '47%', borderRadius: 18, padding: 16, borderWidth: 1,
+    width: '47%', borderRadius: 18, padding: 14, borderWidth: 1,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
   },
   kpiIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  kpiValue: { fontSize: 26, fontWeight: '900', marginBottom: 2 },
-  kpiLabel: { fontSize: 12, fontWeight: '600' },
-  card: {
-    borderRadius: 20, padding: 16, borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: '900' },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  pctText: { fontSize: 22, fontWeight: '900' },
+  kpiValue: { fontSize: 24, fontWeight: '900', marginBottom: 2 },
+  kpiLabel: { fontSize: 12, fontWeight: '600', marginBottom: 10 },
+  learnMoreBtn: { borderRadius: 20, paddingVertical: 7, alignItems: 'center' },
+  learnMoreText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+
+  // Attendance
   attendBar: { height: 12, borderRadius: 6, marginBottom: 8, overflow: 'hidden' },
-  attendFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 6 },
+  attendFill: { height: '100%', borderRadius: 6 },
   attendCaption: { fontSize: 12, fontWeight: '600' },
+
+  // Weekly chart
   barChart: { flexDirection: 'row', gap: 6, alignItems: 'flex-end', marginTop: 12, marginBottom: 10 },
   barCol: { flex: 1, alignItems: 'center', gap: 4 },
   barNum: { fontSize: 11, fontWeight: '800' },
   barTrack: { width: '100%', borderRadius: 6, justifyContent: 'flex-end', overflow: 'hidden' },
   barFill: { width: '100%' },
   barDay: { fontSize: 11 },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, fontWeight: '600' },
+
+  // Quick actions
   actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   actionBtn: { flex: 1, alignItems: 'center', gap: 8 },
   actionIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+
+  // Roster
   rosterRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11 },
   rosterEmoji: { fontSize: 26 },
   rosterName: { fontSize: 14, fontWeight: '800' },
   rosterMeta: { fontSize: 11, fontWeight: '600', marginTop: 2 },
   statusChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   statusChipText: { fontSize: 12, fontWeight: '800' },
+
+  // Bottom bar
+  bottomBar: { flexDirection: 'row', paddingTop: 14 },
+  bottomBarItem: { flex: 1, alignItems: 'center', gap: 4 },
+  bottomBarLabel: { color: '#fff', fontSize: 11, fontWeight: '800' },
 });
