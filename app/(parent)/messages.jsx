@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,7 @@ import { useTheme } from '../../src/contexts/ThemeContext';
 import { COLORS, getTheme } from '../../src/constants/colors';
 import Avatar from '../../src/components/common/Avatar';
 import Badge from '../../src/components/common/Badge';
-import { CHILDREN, MESSAGES as INIT_MESSAGES } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 const QUICK_REPLIES = [
   'Thanks! 😊', 'What time?', 'She loves art!', 'Great news!',
@@ -25,14 +25,37 @@ export default function MessagesScreen() {
   const theme = getTheme(isDark);
   const insets = useSafeAreaInsets();
   const flatListRef = useRef(null);
-  const child = CHILDREN[0];
 
-  const [messages, setMessages] = useState(INIT_MESSAGES);
+  const [child, setChild] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
 
-  const sendMessage = (text) => {
+  useEffect(() => {
+    api.getChildren()
+      .then(kids => {
+        const firstChild = kids[0] || null;
+        setChild(firstChild);
+        if (firstChild) {
+          return api.getMessages(firstChild.id).then(msgs => {
+            setMessages(msgs.map(m => ({
+              id: m.id,
+              role: m.sender_role || m.role || 'teacher',
+              sender: m.sender_name || m.sender || 'Teacher',
+              text: m.text || m.message || '',
+              time: m.time || new Date(m.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+              read: m.read ?? true,
+            })));
+          });
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const sendMessage = async (text) => {
     const val = (text || input).trim();
-    if (!val) return;
+    if (!val || !child) return;
     const newMsg = {
       id: String(Date.now()),
       role: 'parent',
@@ -44,6 +67,11 @@ export default function MessagesScreen() {
     setMessages(prev => [...prev, newMsg]);
     setInput('');
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    try {
+      await api.sendMessage(child.id, val, child.teacherId);
+    } catch (e) {
+      console.error('Send message failed:', e.message);
+    }
   };
 
   function MessageBubble({ msg }) {
@@ -85,12 +113,12 @@ export default function MessagesScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: COLORS.primary, paddingTop: insets.top + 10 }]}>
         <View style={styles.headerContent}>
-          <Avatar name={child.teacherName} emoji="👩‍🏫" size={42} />
+          <Avatar name="Teacher" emoji="👩‍🏫" size={42} />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.headerName}>{child.teacherName}</Text>
+            <Text style={styles.headerName}>{child?.room ? `${child.room} Teacher` : 'Teacher'}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <View style={styles.onlineDot} />
-              <Text style={styles.headerSub}>Active now · {child.room} {child.roomEmoji}</Text>
+              <Text style={styles.headerSub}>Active now · {child?.room || ''} {child?.roomEmoji || ''}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.callBtn}>
@@ -100,6 +128,11 @@ export default function MessagesScreen() {
       </View>
 
       {/* Messages list */}
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -110,12 +143,13 @@ export default function MessagesScreen() {
         ListHeaderComponent={
           <View style={[styles.systemMsg, { borderColor: theme.border }]}>
             <Text style={[styles.systemMsgText, { color: theme.textMuted }]}>
-              🔒 Conversation about {child.name}
+              🔒 Conversation about {child?.name || 'your child'}
             </Text>
           </View>
         }
         renderItem={({ item }) => <MessageBubble msg={item} />}
       />
+      )}
 
       {/* Quick replies */}
       <View style={[styles.quickReplies, { borderTopColor: theme.border }]}>

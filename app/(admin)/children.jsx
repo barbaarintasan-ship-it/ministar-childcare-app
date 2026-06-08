@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -9,42 +9,59 @@ import Modal from '../../src/components/common/Modal';
 import Button from '../../src/components/common/Button';
 import Badge from '../../src/components/common/Badge';
 import Avatar from '../../src/components/common/Avatar';
-import { CHILDREN } from '../../src/data/mockData';
-
-const ROOMS = ['Sunflower 🌻', 'Daisy 🌼', 'Rainbow 🌈', 'Butterfly 🦋'];
+import * as api from '../../src/lib/api';
 
 export default function ChildrenScreen() {
   const { t } = useLang();
   const { isDark } = useTheme();
   const theme = getTheme(isDark);
 
-  const [children, setChildren] = useState(CHILDREN);
+  const [children, setChildren] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRoom, setFilterRoom] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editChild, setEditChild] = useState(null);
-  const [form, setForm] = useState({ name: '', age: '', room: 'Sunflower 🌻', parentName: '', parentEmail: '', parentPhone: '', allergies: '' });
+  const [form, setForm] = useState({ name: '', age: '', room: '', parentName: '', parentEmail: '', parentPhone: '', allergies: '' });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([api.getChildren(), api.getClassrooms()])
+      .then(([kids, rooms]) => {
+        setChildren(kids);
+        setClassrooms(rooms);
+        if (rooms.length > 0) setForm(f => ({ ...f, room: rooms[0].name }));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const roomOptions = classrooms.length > 0
+    ? classrooms.map(r => r.name)
+    : ['Sunflower', 'Daisy', 'Rainbow', 'Butterfly'];
 
   const filteredChildren = children.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.parentName.toLowerCase().includes(search.toLowerCase());
-    const matchRoom = filterRoom === 'all' || c.room === filterRoom.split(' ')[0];
+      (c.emergencyContact || '').toLowerCase().includes(search.toLowerCase());
+    const matchRoom = filterRoom === 'all' || c.room === filterRoom;
     return matchSearch && matchRoom;
   });
 
   const openAdd = () => {
     setEditChild(null);
-    setForm({ name: '', age: '', room: 'Sunflower 🌻', parentName: '', parentEmail: '', parentPhone: '', allergies: '' });
+    setForm({ name: '', age: '', room: roomOptions[0] || '', parentName: '', parentEmail: '', parentPhone: '', allergies: '' });
     setShowModal(true);
   };
 
   const openEdit = (child) => {
     setEditChild(child);
     setForm({
-      name: child.name, age: String(child.age), room: child.room + ' ' + child.roomEmoji,
-      parentName: child.parentName, parentEmail: child.parentEmail,
-      parentPhone: child.parentPhone, allergies: child.allergies.join(', '),
+      name: child.name, age: String(child.age), room: child.room,
+      parentName: child.emergencyContact || '',
+      parentEmail: '',
+      parentPhone: child.emergencyPhone || '',
+      allergies: child.allergies.join(', '),
     });
     setShowModal(true);
   };
@@ -52,41 +69,32 @@ export default function ChildrenScreen() {
   const save = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Child name is required');
     setSaving(true);
-    await new Promise(r => setTimeout(r, 700));
-    if (editChild) {
-      setChildren(prev => prev.map(c => c.id === editChild.id ? {
-        ...c,
-        name: form.name, age: parseInt(form.age) || c.age,
-        room: form.room.split(' ')[0], roomEmoji: form.room.split(' ')[1] || '',
-        parentName: form.parentName, parentEmail: form.parentEmail,
-        parentPhone: form.parentPhone,
-        allergies: form.allergies ? form.allergies.split(',').map(a => a.trim()).filter(Boolean) : [],
-      } : c));
-    } else {
-      const newChild = {
-        id: 'child-new-' + Date.now(),
-        name: form.name, firstName: form.name.split(' ')[0],
+    try {
+      const [firstName, ...rest] = form.name.trim().split(' ');
+      const classroom = classrooms.find(r => r.name === form.room);
+      const payload = {
+        first_name: firstName,
+        last_name: rest.join(' ') || '',
         age: parseInt(form.age) || 3,
-        room: form.room.split(' ')[0], roomEmoji: form.room.split(' ')[1] || '',
-        emoji: '👶', colorIndex: children.length % 10,
-        status: 'not_arrived', checkinTime: null, checkoutTime: null,
-        mood: 'N/A', moodEmoji: '😊',
+        classroom_id: classroom?.id || null,
         allergies: form.allergies ? form.allergies.split(',').map(a => a.trim()).filter(Boolean) : [],
-        allergyAlert: form.allergies.trim().length > 0,
-        parentName: form.parentName, parentEmail: form.parentEmail,
-        parentPhone: form.parentPhone,
-        teacherId: 'staff-1', teacherName: 'Ms. Patricia Torres',
-        enrollDate: new Date().toISOString().split('T')[0],
-        medicalNotes: '', emergencyContact: '',
-        wellness: { eating: 0, sleeping: 0, socializing: 0, learning: 0 },
-        meals: {}, sleepStart: null, sleepEnd: null, sleepDuration: null,
-        teacherNote: '', photoCount: 0, unreadMessages: 0, dob: '',
+        emergency_contact: form.parentName,
+        emergency_phone: form.parentPhone,
       };
-      setChildren(prev => [...prev, newChild]);
+      if (editChild) {
+        const updated = await api.updateChild(editChild.id, payload);
+        setChildren(prev => prev.map(c => c.id === editChild.id ? updated : c));
+      } else {
+        const created = await api.createChild(payload);
+        setChildren(prev => [...prev, created]);
+      }
+      setShowModal(false);
+      Alert.alert('Success', editChild ? 'Child updated!' : 'Child added successfully!');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowModal(false);
-    Alert.alert('Success', editChild ? 'Child updated!' : 'Child added successfully!');
   };
 
   const deleteChild = (child) => {
@@ -95,7 +103,16 @@ export default function ChildrenScreen() {
       `Remove ${child.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => setChildren(prev => prev.filter(c => c.id !== child.id)) },
+        {
+          text: 'Remove', style: 'destructive', onPress: async () => {
+            try {
+              await api.deleteChild(child.id);
+              setChildren(prev => prev.filter(c => c.id !== child.id));
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
+          }
+        },
       ]
     );
   };
@@ -136,7 +153,7 @@ export default function ChildrenScreen() {
         style={[styles.filtersBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
         contentContainerStyle={styles.filtersContent}
       >
-        {['all', ...ROOMS].map(room => (
+        {['all', ...roomOptions].map(room => (
           <TouchableOpacity
             key={room}
             onPress={() => setFilterRoom(room)}
@@ -156,6 +173,11 @@ export default function ChildrenScreen() {
         </Text>
       </View>
 
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         {filteredChildren.map((child) => (
           <View key={child.id} style={[styles.childCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -170,7 +192,7 @@ export default function ChildrenScreen() {
                   {child.age} yrs · {child.room} {child.roomEmoji} · {child.enrollDate}
                 </Text>
                 <Text style={[styles.parentInfo, { color: theme.textSecondary }]}>
-                  👨‍👩‍👧 {child.parentName} · {child.parentPhone}
+                  👨‍👩‍👧 {child.emergencyContact || 'No contact'} · {child.emergencyPhone || ''}
                 </Text>
               </View>
               <Badge
@@ -191,6 +213,7 @@ export default function ChildrenScreen() {
           </View>
         ))}
       </ScrollView>
+      )}
 
       {/* Add/Edit Modal */}
       <Modal visible={showModal} onClose={() => setShowModal(false)} title={editChild ? t('editChild') : t('addChild')} scrollable>
@@ -218,7 +241,7 @@ export default function ChildrenScreen() {
 
         <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Classroom</Text>
         <View style={styles.roomsRow}>
-          {ROOMS.map(room => (
+          {roomOptions.map(room => (
             <TouchableOpacity
               key={room}
               onPress={() => setForm(f => ({ ...f, room }))}

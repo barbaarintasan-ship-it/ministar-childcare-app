@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -9,10 +9,9 @@ import Modal from '../../src/components/common/Modal';
 import Button from '../../src/components/common/Button';
 import Badge from '../../src/components/common/Badge';
 import Avatar from '../../src/components/common/Avatar';
-import { STAFF } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 const ROLES = ['Teacher', 'Assistant', 'Admin', 'Director', 'Cook', 'Nurse'];
-const CLASSROOMS = ['Sunflower', 'Daisy', 'Rainbow', 'Butterfly', 'All'];
 const STATUS_OPTIONS = ['active', 'on_leave', 'part_time'];
 
 export default function StaffScreen() {
@@ -20,17 +19,31 @@ export default function StaffScreen() {
   const { isDark } = useTheme();
   const theme = getTheme(isDark);
 
-  const [staff, setStaff] = useState(STAFF);
+  const [staff, setStaff] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editStaff, setEditStaff] = useState(null);
   const [form, setForm] = useState({
-    name: '', role: 'Teacher', classroom: 'Sunflower',
+    name: '', role: 'Teacher', classroom: '',
     email: '', phone: '', status: 'active', certifications: '',
   });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    Promise.all([api.getStaff(), api.getClassrooms()])
+      .then(([members, rooms]) => {
+        setStaff(members);
+        setClassrooms(rooms);
+        if (rooms.length > 0) setForm(f => ({ ...f, classroom: rooms[0].name }));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const roomOptions = classrooms.length > 0 ? classrooms.map(r => r.name) : [];
   const allRoles = ['all', ...ROLES];
 
   const filteredStaff = staff.filter(s => {
@@ -43,7 +56,7 @@ export default function StaffScreen() {
 
   const openAdd = () => {
     setEditStaff(null);
-    setForm({ name: '', role: 'Teacher', classroom: 'Sunflower', email: '', phone: '', status: 'active', certifications: '' });
+    setForm({ name: '', role: 'Teacher', classroom: roomOptions[0] || '', email: '', phone: '', status: 'active', certifications: '' });
     setShowModal(true);
   };
 
@@ -52,7 +65,7 @@ export default function StaffScreen() {
     setForm({
       name: member.name,
       role: member.role,
-      classroom: member.classroom || 'Sunflower',
+      classroom: member.room || roomOptions[0] || '',
       email: member.email || '',
       phone: member.phone || '',
       status: member.status || 'active',
@@ -64,38 +77,31 @@ export default function StaffScreen() {
   const save = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Staff name is required');
     setSaving(true);
-    await new Promise(r => setTimeout(r, 700));
-    if (editStaff) {
-      setStaff(prev => prev.map(s => s.id === editStaff.id ? {
-        ...s,
+    try {
+      const classroom = classrooms.find(r => r.name === form.classroom);
+      const payload = {
         name: form.name,
         role: form.role,
-        classroom: form.classroom,
+        classroom_id: classroom?.id || null,
         email: form.email,
         phone: form.phone,
         status: form.status,
         certifications: form.certifications ? form.certifications.split(',').map(c => c.trim()).filter(Boolean) : [],
-      } : s));
-    } else {
-      const newMember = {
-        id: 'staff-new-' + Date.now(),
-        name: form.name,
-        role: form.role,
-        classroom: form.classroom,
-        email: form.email,
-        phone: form.phone,
-        status: form.status,
-        certifications: form.certifications ? form.certifications.split(',').map(c => c.trim()).filter(Boolean) : [],
-        emoji: '👤',
-        hireDate: new Date().toISOString().split('T')[0],
-        childrenCount: 0,
-        rating: 5.0,
       };
-      setStaff(prev => [...prev, newMember]);
+      if (editStaff) {
+        const updated = await api.updateStaff(editStaff.id, payload);
+        setStaff(prev => prev.map(s => s.id === editStaff.id ? updated : s));
+      } else {
+        const created = await api.createStaff(payload);
+        setStaff(prev => [...prev, created]);
+      }
+      setShowModal(false);
+      Alert.alert('Success', editStaff ? 'Staff member updated!' : 'Staff member added!');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowModal(false);
-    Alert.alert('Success', editStaff ? 'Staff member updated!' : 'Staff member added!');
   };
 
   const deleteStaff = (member) => {
@@ -104,7 +110,16 @@ export default function StaffScreen() {
       `Remove ${member.name} from staff?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => setStaff(prev => prev.filter(s => s.id !== member.id)) },
+        {
+          text: 'Remove', style: 'destructive', onPress: async () => {
+            try {
+              await api.deleteStaff(member.id);
+              setStaff(prev => prev.filter(s => s.id !== member.id));
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
+          }
+        },
       ]
     );
   };
@@ -187,6 +202,11 @@ export default function StaffScreen() {
         </Text>
       </View>
 
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.teacher} />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         {filteredStaff.map((member) => {
           const badge = getStatusBadge(member.status);
@@ -203,7 +223,7 @@ export default function StaffScreen() {
                     </View>
                   </View>
                   <Text style={[styles.staffInfo, { color: theme.textMuted }]}>
-                    {member.classroom ? `${member.classroom} Room` : 'All Classrooms'} · Hired {member.hireDate || 'N/A'}
+                    {member.room ? `${member.room} Room` : 'All Classrooms'} · Hired {member.startDate || 'N/A'}
                   </Text>
                   {member.email ? (
                     <Text style={[styles.staffContact, { color: theme.textSecondary }]}>
@@ -258,6 +278,7 @@ export default function StaffScreen() {
           );
         })}
       </ScrollView>
+      )}
 
       {/* Add/Edit Modal */}
       <Modal visible={showModal} onClose={() => setShowModal(false)} title={editStaff ? 'Edit Staff Member' : 'Add Staff Member'} scrollable>
@@ -298,7 +319,7 @@ export default function StaffScreen() {
 
         <Text style={[styles.fieldLabel, { color: theme.textMuted }]}>Classroom</Text>
         <View style={styles.optionsRow}>
-          {CLASSROOMS.map(room => (
+          {roomOptions.map(room => (
             <TouchableOpacity
               key={room}
               onPress={() => setForm(f => ({ ...f, classroom: room }))}

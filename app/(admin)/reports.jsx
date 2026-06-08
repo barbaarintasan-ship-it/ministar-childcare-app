@@ -1,14 +1,12 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { COLORS, getTheme } from '../../src/constants/colors';
 import Header from '../../src/components/common/Header';
 import Card from '../../src/components/common/Card';
-import {
-  WEEKLY_ATTENDANCE, MEAL_STATS, MONTHLY_REVENUE, CHILDREN, ADMIN_STATS,
-} from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 const { width } = Dimensions.get('window');
 const BAR_MAX_H = 90;
@@ -72,27 +70,31 @@ export default function ReportsScreen() {
   const theme = getTheme(isDark);
   const [activeTab, setActiveTab] = useState('Attendance');
 
+  const [stats, setStats] = useState({});
+  const [weeklyAtt, setWeeklyAtt] = useState([]);
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.getReportsSummary(), api.getWeeklyAttendance(), api.getChildren()])
+      .then(([s, w, k]) => { setStats(s); setWeeklyAtt(w); setChildren(k); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
   // Rooms breakdown
-  const roomData = ['Sunflower', 'Daisy', 'Rainbow', 'Butterfly'].map(room => ({
+  const roomData = [...new Set(children.map(c => c.room).filter(Boolean))].map(room => ({
     room,
-    count: CHILDREN.filter(c => c.room === room).length,
-    checkedIn: CHILDREN.filter(c => c.room === room && c.status === 'checked_in').length,
+    count: children.filter(c => c.room === room).length,
+    checkedIn: children.filter(c => c.room === room && c.status === 'checked_in').length,
   }));
-  const maxRoom = Math.max(...roomData.map(r => r.count));
 
-  // Meal stats
-  const mealLabels = MEAL_STATS?.map(m => ({ ...m, label: m.meal?.slice(0, 3) || '' })) || [];
+  // Meal stats — no API endpoint yet
+  const mealLabels = [];
 
-  // Revenue months
-  const revenueData = MONTHLY_REVENUE || [
-    { month: 'Jan', amount: 18200 },
-    { month: 'Feb', amount: 19800 },
-    { month: 'Mar', amount: 21000 },
-    { month: 'Apr', amount: 20400 },
-    { month: 'May', amount: 22600 },
-    { month: 'Jun', amount: 21800 },
-  ];
-  const maxRevenue = Math.max(...revenueData.map(r => r.amount));
+  // Revenue months — fallback to empty
+  const revenueData = [];
+  const maxRevenue = 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -118,6 +120,11 @@ export default function ReportsScreen() {
         ))}
       </ScrollView>
 
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.admin} />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
 
         {/* ======= ATTENDANCE ======= */}
@@ -125,13 +132,15 @@ export default function ReportsScreen() {
           <>
             <Card>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Weekly Attendance</Text>
+              {weeklyAtt.length > 0 ? (
+              <>
               <StatSummaryRow items={[
-                { label: 'Avg Present', value: Math.round(WEEKLY_ATTENDANCE.reduce((s, d) => s + d.present, 0) / WEEKLY_ATTENDANCE.length), color: COLORS.primary },
-                { label: 'Avg Absent', value: Math.round(WEEKLY_ATTENDANCE.reduce((s, d) => s + d.absent, 0) / WEEKLY_ATTENDANCE.length), color: COLORS.error },
-                { label: 'Rate', value: ADMIN_STATS.attendanceRate + '%', color: COLORS.success },
+                { label: 'Avg Present', value: Math.round(weeklyAtt.reduce((s, d) => s + (d.present || 0), 0) / weeklyAtt.length), color: COLORS.primary },
+                { label: 'Avg Absent', value: Math.round(weeklyAtt.reduce((s, d) => s + (d.absent || 0), 0) / weeklyAtt.length), color: COLORS.error },
+                { label: 'Rate', value: (stats.attendanceRate || 0) + '%', color: COLORS.success },
               ]} />
               <InlineBarChart
-                data={WEEKLY_ATTENDANCE}
+                data={weeklyAtt}
                 keyA="present"
                 keyB="absent"
                 colorA={COLORS.primary}
@@ -148,16 +157,19 @@ export default function ReportsScreen() {
                   <Text style={[styles.legendText, { color: theme.textMuted }]}>Absent</Text>
                 </View>
               </View>
+              </>) : (
+                <Text style={[styles.emptyText, { color: theme.textMuted }]}>No attendance data yet</Text>
+              )}
             </Card>
 
             <Card>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>📅 Today's Summary</Text>
               <View style={styles.todayGrid}>
                 {[
-                  { icon: 'people', label: 'Total Enrolled', value: ADMIN_STATS.totalChildren, color: COLORS.primary },
-                  { icon: 'checkmark-circle', label: 'Present Today', value: ADMIN_STATS.presentToday, color: COLORS.success },
-                  { icon: 'close-circle', label: 'Absent Today', value: ADMIN_STATS.absentToday, color: COLORS.error },
-                  { icon: 'moon', label: 'Sleeping', value: CHILDREN.filter(c => c.status === 'sleeping').length, color: COLORS.teacher },
+                  { icon: 'people', label: 'Total Enrolled', value: stats.totalChildren || 0, color: COLORS.primary },
+                  { icon: 'checkmark-circle', label: 'Present Today', value: stats.presentToday || 0, color: COLORS.success },
+                  { icon: 'close-circle', label: 'Absent Today', value: stats.absentToday || 0, color: COLORS.error },
+                  { icon: 'moon', label: 'Sleeping', value: children.filter(c => c.status === 'sleeping').length, color: COLORS.teacher },
                 ].map((item, i) => (
                   <View key={i} style={[styles.todayCard, { backgroundColor: item.color + '12', borderColor: item.color + '30' }]}>
                     <Ionicons name={item.icon} size={22} color={item.color} />
@@ -215,7 +227,7 @@ export default function ReportsScreen() {
 
             <Card>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>⚠️ Allergy Alerts</Text>
-              {CHILDREN.filter(c => c.allergyAlert).map(child => (
+              {children.filter(c => c.allergyAlert).map(child => (
                 <View key={child.id} style={[styles.allergyRow, { borderBottomColor: theme.border }]}>
                   <Text style={{ fontSize: 18 }}>{child.emoji}</Text>
                   <View style={{ flex: 1, marginLeft: 10 }}>
@@ -226,7 +238,7 @@ export default function ReportsScreen() {
                   </View>
                 </View>
               ))}
-              {CHILDREN.filter(c => c.allergyAlert).length === 0 && (
+              {children.filter(c => c.allergyAlert).length === 0 && (
                 <Text style={[styles.emptyText, { color: theme.textMuted }]}>No allergy alerts</Text>
               )}
             </Card>
@@ -239,9 +251,9 @@ export default function ReportsScreen() {
             <Card>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>💰 Monthly Revenue</Text>
               <StatSummaryRow items={[
-                { label: 'This Month', value: '$' + (ADMIN_STATS.monthlyRevenue / 1000).toFixed(1) + 'k', color: COLORS.success },
-                { label: 'Collected', value: '$' + ((ADMIN_STATS.monthlyRevenue * 0.87) / 1000).toFixed(1) + 'k', color: COLORS.primary },
-                { label: 'Outstanding', value: '$' + ((ADMIN_STATS.monthlyRevenue * 0.13) / 1000).toFixed(1) + 'k', color: COLORS.error },
+                { label: 'This Month', value: '$' + ((stats.monthlyRevenue || 0) / 1000).toFixed(1) + 'k', color: COLORS.success },
+                { label: 'Collected', value: '$' + (((stats.monthlyRevenue || 0) * 0.87) / 1000).toFixed(1) + 'k', color: COLORS.primary },
+                { label: 'Outstanding', value: '$' + (((stats.monthlyRevenue || 0) * 0.13) / 1000).toFixed(1) + 'k', color: COLORS.error },
               ]} />
               <InlineBarChart
                 data={revenueData.map(r => ({ ...r, amount: Math.round(r.amount / 1000), label: r.month?.slice(0, 3) || '' }))}
@@ -335,10 +347,10 @@ export default function ReportsScreen() {
             <Card>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Age Distribution</Text>
               {[2, 3, 4, 5].map((age, i) => {
-                const count = CHILDREN.filter(c => c.age === age).length;
+                const count = children.filter(c => c.age === age).length;
                 const colors = [COLORS.primary, COLORS.teacher, COLORS.success, COLORS.accent];
                 return (
-                  <HorizontalBar key={age} label={`Age ${age}`} value={count} max={CHILDREN.length} color={colors[i]} theme={theme} />
+                  <HorizontalBar key={age} label={`Age ${age}`} value={count} max={Math.max(children.length, 1)} color={colors[i]} theme={theme} />
                 );
               })}
             </Card>
@@ -346,6 +358,7 @@ export default function ReportsScreen() {
         )}
 
       </ScrollView>
+      )}
     </View>
   );
 }

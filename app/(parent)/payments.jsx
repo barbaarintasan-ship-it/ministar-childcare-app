@@ -1,4 +1,5 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -6,20 +7,39 @@ import { COLORS, getTheme } from '../../src/constants/colors';
 import Header from '../../src/components/common/Header';
 import Card from '../../src/components/common/Card';
 import Badge from '../../src/components/common/Badge';
-import { PAYMENTS } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 export default function PaymentsScreen() {
   const { t } = useLang();
   const { isDark } = useTheme();
   const theme = getTheme(isDark);
 
-  const totalPaid = PAYMENTS.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
-  const nextPayment = PAYMENTS.find(p => p.status === 'upcoming');
-  const overdue = PAYMENTS.find(p => p.status === 'overdue');
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getPayments()
+      .then(data => setPayments(data.map(p => ({
+        id: p.id,
+        desc: p.description || p.desc || 'Tuition',
+        amount: parseFloat(p.amount) || 0,
+        status: p.status || 'upcoming',
+        dueDate: p.due_date || p.dueDate || '',
+        paidDate: p.paid_date || p.paidDate || '',
+        method: p.method || 'Card',
+      }))))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const totalPaid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+  const nextPayment = payments.find(p => p.status === 'upcoming');
+  const overdue = payments.find(p => p.status === 'overdue');
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <Header title={t('paymentsTitle')} />
+      {loading && <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 40 }} />}
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
 
         {/* Summary Cards */}
@@ -83,7 +103,7 @@ export default function PaymentsScreen() {
 
         {/* Payment History */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>🕒 {t('paymentHistory')}</Text>
-        {PAYMENTS.filter(p => p.status === 'paid').map((payment, i) => (
+        {payments.filter(p => p.status === 'paid').map((payment, i) => (
           <View
             key={payment.id}
             style={[styles.paymentRow, { backgroundColor: theme.card, borderColor: theme.border }]}

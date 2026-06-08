@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -7,28 +7,43 @@ import { COLORS, getTheme } from '../../src/constants/colors';
 import Header from '../../src/components/common/Header';
 import Badge from '../../src/components/common/Badge';
 import Avatar from '../../src/components/common/Avatar';
-import { CHILDREN } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 export default function AttendanceScreen() {
   const { t } = useLang();
   const { isDark } = useTheme();
   const theme = getTheme(isDark);
 
-  const [attendance, setAttendance] = useState(
-    Object.fromEntries(CHILDREN.map(c => [c.id, { status: c.status, checkin: c.checkinTime, checkout: c.checkoutTime }]))
-  );
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [attendance, setAttendance] = useState({});
 
-  const setStatus = (id, status) => {
+  useEffect(() => {
+    api.getChildren()
+      .then(kids => {
+        setChildren(kids);
+        setAttendance(Object.fromEntries(kids.map(c => [c.id, { status: c.status, checkin: c.checkinTime, checkout: c.checkoutTime }])));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const setStatus = async (id, status) => {
     const now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     setAttendance(prev => ({
       ...prev,
       [id]: {
         ...prev[id],
         status,
-        checkin: status === 'checked_in' && !prev[id].checkin ? now : prev[id].checkin,
-        checkout: status === 'checked_out' ? now : prev[id].checkout,
+        checkin: status === 'checked_in' && !prev[id]?.checkin ? now : prev[id]?.checkin,
+        checkout: status === 'checked_out' ? now : prev[id]?.checkout,
       },
     }));
+    try {
+      await api.updateAttendance(id, { status });
+    } catch (e) {
+      console.error('Attendance update failed:', e.message);
+    }
   };
 
   const present = Object.values(attendance).filter(a => a.status === 'checked_in').length;
@@ -45,7 +60,7 @@ export default function AttendanceScreen() {
           { label: 'Present', count: present, color: COLORS.success, bg: COLORS.successLight },
           { label: 'Checked Out', count: out, color: COLORS.teacher, bg: COLORS.teacherLight },
           { label: 'Absent', count: absent, color: COLORS.error, bg: COLORS.errorLight },
-          { label: 'Total', count: CHILDREN.length, color: COLORS.primary, bg: COLORS.primaryLight },
+          { label: 'Total', count: children.length, color: COLORS.primary, bg: COLORS.primaryLight },
         ].map((s, i) => (
           <View key={i} style={[styles.summaryItem, { backgroundColor: s.bg }]}>
             <Text style={[styles.summaryCount, { color: s.color }]}>{s.count}</Text>
@@ -64,9 +79,14 @@ export default function AttendanceScreen() {
         <Ionicons name="camera" size={18} color={COLORS.teacher} />
       </TouchableOpacity>
 
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.teacher} />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        {CHILDREN.map((child) => {
-          const att = attendance[child.id];
+        {children.map((child) => {
+          const att = attendance[child.id] || { status: 'not_arrived', checkin: null, checkout: null };
           return (
             <View
               key={child.id}
@@ -149,6 +169,7 @@ export default function AttendanceScreen() {
           );
         })}
       </ScrollView>
+      )}
     </View>
   );
 }

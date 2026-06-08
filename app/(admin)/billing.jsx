@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -8,7 +8,7 @@ import Header from '../../src/components/common/Header';
 import Modal from '../../src/components/common/Modal';
 import Button from '../../src/components/common/Button';
 import Badge from '../../src/components/common/Badge';
-import { INVOICES, CHILDREN, ADMIN_STATS } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 const STATUS_FILTERS = ['all', 'overdue', 'upcoming', 'paid'];
 
@@ -17,7 +17,8 @@ export default function BillingScreen() {
   const { isDark } = useTheme();
   const theme = getTheme(isDark);
 
-  const [invoices, setInvoices] = useState(INVOICES);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -25,6 +26,27 @@ export default function BillingScreen() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [form, setForm] = useState({ childName: '', amount: '', dueDate: '', description: '', type: 'Tuition' });
   const [saving, setSaving] = useState(false);
+
+  const normalizeInvoice = (p) => ({
+    id: p.id,
+    childName: p.child_name || p.childName || 'Unknown',
+    parentName: p.parent_name || p.parentName || '',
+    amount: parseFloat(p.amount) || 0,
+    status: p.status || 'upcoming',
+    description: p.description || p.desc || 'Monthly Tuition',
+    type: p.type || 'Tuition',
+    dueDate: p.due_date || p.dueDate || '',
+    paidDate: p.paid_date || p.paidDate || null,
+    method: p.method || 'Card',
+    childId: p.child_id || p.childId || null,
+  });
+
+  useEffect(() => {
+    api.getPayments()
+      .then(data => setInvoices(data.map(normalizeInvoice)))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   const INVOICE_TYPES = ['Tuition', 'Meals', 'Activity Fee', 'Late Pickup', 'Other'];
 
@@ -52,10 +74,16 @@ export default function BillingScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Mark Paid', onPress: () => {
-            setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid', paidDate: new Date().toISOString().split('T')[0] } : i));
-            setShowInvoiceModal(false);
-            Alert.alert('Updated', 'Invoice marked as paid.');
+          text: 'Mark Paid', onPress: async () => {
+            try {
+              await api.markPaymentPaid(inv.id);
+              const today = new Date().toISOString().split('T')[0];
+              setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid', paidDate: today } : i));
+              setShowInvoiceModal(false);
+              Alert.alert('Updated', 'Invoice marked as paid.');
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
           },
         },
       ]
@@ -72,7 +100,16 @@ export default function BillingScreen() {
       `Delete invoice for ${inv.childName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => setInvoices(prev => prev.filter(i => i.id !== inv.id)) },
+        {
+          text: 'Delete', style: 'destructive', onPress: async () => {
+            try {
+              await api.deletePayment(inv.id);
+              setInvoices(prev => prev.filter(i => i.id !== inv.id));
+            } catch (e) {
+              Alert.alert('Error', e.message);
+            }
+          }
+        },
       ]
     );
   };
@@ -82,22 +119,25 @@ export default function BillingScreen() {
       return Alert.alert('Error', 'Child name and amount are required');
     }
     setSaving(true);
-    await new Promise(r => setTimeout(r, 600));
-    const newInv = {
-      id: 'inv-new-' + Date.now(),
-      childName: form.childName,
-      parentName: '',
-      amount: parseFloat(form.amount) || 0,
-      dueDate: form.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-      status: 'upcoming',
-      description: form.description || form.type,
-      type: form.type,
-    };
-    setInvoices(prev => [newInv, ...prev]);
-    setSaving(false);
-    setShowModal(false);
-    setForm({ childName: '', amount: '', dueDate: '', description: '', type: 'Tuition' });
-    Alert.alert('Created', 'Invoice created successfully!');
+    try {
+      const payload = {
+        description: form.description || form.type,
+        amount: parseFloat(form.amount) || 0,
+        due_date: form.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+        status: 'upcoming',
+        type: form.type,
+        child_name: form.childName,
+      };
+      const created = await api.createPayment(payload);
+      setInvoices(prev => [normalizeInvoice(created), ...prev]);
+      setShowModal(false);
+      setForm({ childName: '', amount: '', dueDate: '', description: '', type: 'Tuition' });
+      Alert.alert('Created', 'Invoice created successfully!');
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getStatusStyle = (status) => {
@@ -198,6 +238,7 @@ export default function BillingScreen() {
         })}
       </ScrollView>
 
+      {loading && <ActivityIndicator size="large" color={COLORS.admin} style={{ marginTop: 30 }} />}
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
           <View style={styles.empty}>
