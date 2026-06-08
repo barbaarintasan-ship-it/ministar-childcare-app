@@ -51,7 +51,7 @@ export default function AdminDashboard() {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={logout} style={styles.navIconBtn}>
+          <TouchableOpacity onPress={async () => { await logout(); router.replace('/login'); }} style={styles.navIconBtn}>
             <Ionicons name="log-out-outline" size={20} color={COLORS.admin} />
           </TouchableOpacity>
         </View>

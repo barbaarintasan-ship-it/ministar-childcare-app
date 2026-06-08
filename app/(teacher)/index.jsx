@@ -45,7 +45,7 @@ export default function TeacherHome() {
           <TouchableOpacity onPress={toggleTheme} style={styles.navIconBtn}>
             <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={COLORS.teacher} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={logout} style={styles.navIconBtn}>
+          <TouchableOpacity onPress={async () => { await logout(); router.replace('/login'); }} style={styles.navIconBtn}>
             <Ionicons name="log-out-outline" size={20} color={COLORS.teacher} />
           </TouchableOpacity>
         </View>
