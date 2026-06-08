@@ -1,4 +1,5 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image, Modal, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +8,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { useLang } from '../../src/contexts/LangContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { COLORS, getTheme } from '../../src/constants/colors';
-import { CHILDREN } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -41,18 +42,82 @@ export default function ParentHome() {
   const theme = getTheme(isDark);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const child = CHILDREN[0];
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const statusColor = child.status === 'checked_in' ? '#10b981' : child.status === 'absent' ? '#ef4444' : '#6b7280';
-  const statusLabel = child.status === 'checked_in' ? 'Checked In' : child.status === 'absent' ? 'Absent Today' : 'Checked Out';
-  const statusBg    = child.status === 'checked_in' ? '#d1fae5' : child.status === 'absent' ? '#fee2e2' : '#f3f4f6';
+  useEffect(() => {
+    api.getChildren()
+      .then(data => setChildren(data))
+      .catch(err => console.error('Failed to load children:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const child = children[0] || null;
+
+  const MENU_ITEMS = [
+    { icon: 'home-outline',            label: 'Dashboard',    route: '/(parent)/' },
+    { icon: 'chatbubble-ellipses-outline', label: 'Messages', route: '/(parent)/messages' },
+    { icon: 'document-text-outline',   label: 'Daily Report', route: '/(parent)/reports' },
+    { icon: 'images-outline',          label: 'Photos',       route: '/(parent)/photos' },
+    { icon: 'trending-up-outline',     label: 'Growth',       route: '/(parent)/growth' },
+    { icon: 'person-outline',          label: 'Profile',      route: '/(parent)/profile' },
+  ];
+
+  const childStatus = child?.status || 'not_arrived';
+  const statusColor = childStatus === 'checked_in' ? '#10b981' : childStatus === 'absent' ? '#ef4444' : '#6b7280';
+  const statusLabel = childStatus === 'checked_in' ? 'Checked In' : childStatus === 'absent' ? 'Absent Today' : 'Checked Out';
+  const statusBg    = childStatus === 'checked_in' ? '#d1fae5' : childStatus === 'absent' ? '#fee2e2' : '#f3f4f6';
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+
+      {/* ── DRAWER MENU ── */}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity style={styles.drawerOverlay} activeOpacity={1} onPress={() => setMenuOpen(false)}>
+          <View style={[styles.drawer, { backgroundColor: theme.card }]}>
+            <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
+              <Image source={require('../../logo.png')} style={styles.drawerLogo} resizeMode="contain" />
+              <TouchableOpacity onPress={() => setMenuOpen(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.drawerUserRow}>
+              <View style={[styles.drawerAvatar, { backgroundColor: COLORS.primary + '22' }]}>
+                <Text style={{ fontSize: 22 }}>👤</Text>
+              </View>
+              <View>
+                <Text style={[styles.drawerUserName, { color: theme.text }]}>{user?.name}</Text>
+                <Text style={[styles.drawerUserRole, { color: COLORS.primary }]}>Parent</Text>
+              </View>
+            </View>
+            {MENU_ITEMS.map((item, i) => (
+              <TouchableOpacity key={i} style={styles.drawerItem} onPress={() => { setMenuOpen(false); router.push(item.route); }}>
+                <Ionicons name={item.icon} size={20} color={COLORS.primary} style={{ marginRight: 14 }} />
+                <Text style={[styles.drawerItemText, { color: theme.text }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.drawerLogout} onPress={async () => { setMenuOpen(false); await logout(); router.replace('/login'); }}>
+              <Ionicons name="log-out-outline" size={20} color="#ef4444" style={{ marginRight: 14 }} />
+              <Text style={{ color: '#ef4444', fontSize: 15, fontWeight: '600' }}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
       {/* ── NAVBAR (website style: hamburger | logo | icons) ── */}
       <View style={[styles.navbar, { paddingTop: insets.top + 10, backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity style={styles.navIconBtn}>
+        <TouchableOpacity style={styles.navIconBtn} onPress={() => setMenuOpen(true)}>
           <Ionicons name="menu" size={24} color={theme.text} />
         </TouchableOpacity>
         <Image source={require('../../logo.png')} style={styles.navLogo} resizeMode="contain" />
@@ -87,9 +152,10 @@ export default function ParentHome() {
           {getGreeting()},{'\n'}
           <Text style={{ color: COLORS.primary }}>{user?.name?.split(' ')[0]}</Text> 👋
         </Text>
-        <Text style={styles.heroSub}>Here's how {child.name} is doing today.</Text>
+        <Text style={styles.heroSub}>{child ? `Here's how ${child.name} is doing today.` : 'Welcome to Mini Star!'}</Text>
 
         {/* Child status card */}
+        {child ? (
         <TouchableOpacity
           onPress={() => router.push('/(parent)/profile')}
           style={styles.childCard}
@@ -111,6 +177,11 @@ export default function ParentHome() {
             <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
           </View>
         </TouchableOpacity>
+        ) : (
+          <View style={[styles.childCard, { alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ color: '#6b7280', fontSize: 14 }}>No children enrolled yet. Contact the center.</Text>
+          </View>
+        )}
 
         {/* Stars rating (website style) */}
         <View style={styles.starsRow}>
@@ -141,8 +212,8 @@ export default function ParentHome() {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Today at a Glance</Text>
           <View style={styles.statsRow}>
             {[
-              { emoji: '😄', label: 'Mood',   value: child.moodEmoji + ' ' + child.mood,   color: '#10b981', bg: '#d1fae5' },
-              { emoji: '😴', label: 'Nap',    value: child.sleepDuration || '1h 45m',       color: '#8b5cf6', bg: '#ede9fe' },
+              { emoji: '😄', label: 'Mood',   value: (child?.moodEmoji || '😊') + ' ' + (child?.mood || 'Good'), color: '#10b981', bg: '#d1fae5' },
+              { emoji: '😴', label: 'Nap',    value: '1h 45m',                                                              color: '#8b5cf6', bg: '#ede9fe' },
               { emoji: '🍽',  label: 'Meals',  value: '3 / 3',                              color: '#f59e0b', bg: '#fef3c7' },
               { emoji: '🚗', label: 'Pickup', value: '5:00 PM',                            color: '#3b82f6', bg: '#dbeafe' },
             ].map((s, i) => (
@@ -201,12 +272,12 @@ export default function ParentHome() {
               <Text style={{ fontSize: 18 }}>👩‍🏫</Text>
             </View>
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={[styles.teacherName, { color: COLORS.primaryDark }]}>{child.teacherName}</Text>
+              <Text style={[styles.teacherName, { color: COLORS.primaryDark }]}>{child?.teacherName || 'Your Teacher'}</Text>
               <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Today's Note</Text>
             </View>
             <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Today</Text>
           </View>
-          <Text style={[styles.teacherNoteText, { color: COLORS.primaryDark }]}>"{child.teacherNote}"</Text>
+          <Text style={[styles.teacherNoteText, { color: COLORS.primaryDark }]}>"{child?.teacherNote || 'Have a great day!'}"</Text>
         </View>
 
         {/* ── ACTIVITY FEED ── */}
@@ -246,12 +317,12 @@ export default function ParentHome() {
           <View style={styles.messageBannerLeft}>
             <Ionicons name="chatbubble-ellipses" size={22} color="#fff" />
             <View style={{ marginLeft: 12 }}>
-              <Text style={styles.messageBannerTitle}>Message {child.teacherName}</Text>
+              <Text style={styles.messageBannerTitle}>Message {child?.teacherName || 'Teacher'}</Text>
               <Text style={styles.messageBannerSub}>Tap to open conversation</Text>
             </View>
           </View>
           <View style={styles.messageBadge}>
-            <Text style={styles.messageBadgeText}>{child.unreadMessages || 2}</Text>
+            <Text style={styles.messageBadgeText}>{child?.unreadMessages || 0}</Text>
           </View>
         </TouchableOpacity>
 
@@ -273,6 +344,7 @@ export default function ParentHome() {
       </View>
 
     </ScrollView>
+    </View>
   );
 }
 
@@ -426,4 +498,26 @@ const styles = StyleSheet.create({
   bottomBar: { flexDirection: 'row', paddingTop: 14 },
   bottomBarItem: { flex: 1, alignItems: 'center', gap: 4 },
   bottomBarLabel: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  // Drawer menu
+  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', flexDirection: 'row' },
+  drawer: {
+    width: 280, height: '100%',
+    shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.2, elevation: 10,
+  },
+  drawerHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 54, paddingBottom: 16, borderBottomWidth: 1,
+  },
+  drawerLogo: { width: 110, height: 40 },
+  drawerUserRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20 },
+  drawerAvatar: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  drawerUserName: { fontSize: 15, fontWeight: '800' },
+  drawerUserRole: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  drawerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20 },
+  drawerItemText: { fontSize: 15, fontWeight: '600' },
+  drawerLogout: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20,
+    marginTop: 'auto', borderTopWidth: 1, borderTopColor: '#f3f4f6',
+  },
 });

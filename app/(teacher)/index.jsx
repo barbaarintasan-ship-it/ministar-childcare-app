@@ -1,4 +1,5 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image, Modal, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +8,7 @@ import { useAuth } from '../../src/contexts/AuthContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { COLORS, getTheme } from '../../src/constants/colors';
 import Badge from '../../src/components/common/Badge';
-import { CHILDREN } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 const TO_LOG = [
   { id: 1, icon: '🍽', label: 'Log Lunch',            done: true,  color: '#f59e0b', route: '/(teacher)/meals'      },
@@ -25,19 +26,78 @@ export default function TeacherHome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const myChildren = CHILDREN.filter(c => c.teacherId === 'staff-1');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [allChildren, setAllChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const MENU_ITEMS = [
+    { icon: 'home-outline',              label: 'Dashboard',  route: '/(teacher)/' },
+    { icon: 'checkmark-circle-outline',  label: 'Attendance', route: '/(teacher)/attendance' },
+    { icon: 'restaurant-outline',        label: 'Meals',      route: '/(teacher)/meals' },
+    { icon: 'camera-outline',            label: 'Photos',     route: '/(teacher)/upload' },
+    { icon: 'heart-outline',             label: 'Health',     route: '/(teacher)/health' },
+    { icon: 'people-outline',            label: 'My Class',   route: '/(teacher)/attendance' },
+  ];
+
+  useEffect(() => {
+    api.getChildren()
+      .then(data => setAllChildren(data))
+      .catch(err => console.error('Failed to load children:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const myChildren = allChildren.filter(c => !c.teacherId || c.teacherId === user?.id);
   const present  = myChildren.filter(c => c.status === 'checked_in').length;
   const absent   = myChildren.filter(c => c.status === 'absent').length;
-  const sleeping = myChildren.filter(c => c.sleepStart && !c.sleepEnd).length;
+  const sleeping = 0;
   const doneCount = TO_LOG.filter(t => t.done).length;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: getTheme(isDark).bg }}>
+        <ActivityIndicator size="large" color={COLORS.teacher} />
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity style={styles.drawerOverlay} activeOpacity={1} onPress={() => setMenuOpen(false)}>
+          <View style={[styles.drawer, { backgroundColor: theme.card }]}>
+            <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
+              <Image source={require('../../logo.png')} style={styles.drawerLogo} resizeMode="contain" />
+              <TouchableOpacity onPress={() => setMenuOpen(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.drawerUserRow}>
+              <View style={[styles.drawerAvatar, { backgroundColor: COLORS.teacher + '22' }]}>
+                <Text style={{ fontSize: 22 }}>👤</Text>
+              </View>
+              <View>
+                <Text style={[styles.drawerUserName, { color: theme.text }]}>{user?.name}</Text>
+                <Text style={[styles.drawerUserRole, { color: COLORS.teacher }]}>Teacher</Text>
+              </View>
+            </View>
+            {MENU_ITEMS.map((item, i) => (
+              <TouchableOpacity key={i} style={styles.drawerItem} onPress={() => { setMenuOpen(false); router.push(item.route); }}>
+                <Ionicons name={item.icon} size={20} color={COLORS.teacher} style={{ marginRight: 14 }} />
+                <Text style={[styles.drawerItemText, { color: theme.text }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.drawerLogout} onPress={async () => { setMenuOpen(false); await logout(); router.replace('/login'); }}>
+              <Ionicons name="log-out-outline" size={20} color="#ef4444" style={{ marginRight: 14 }} />
+              <Text style={{ color: '#ef4444', fontSize: 15, fontWeight: '600' }}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
       {/* ── NAVBAR (website style) ── */}
       <View style={[styles.navbar, { paddingTop: insets.top + 10, backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity style={styles.navIconBtn}>
+        <TouchableOpacity style={styles.navIconBtn} onPress={() => setMenuOpen(true)}>
           <Ionicons name="menu" size={24} color={theme.text} />
         </TouchableOpacity>
         <Image source={require('../../logo.png')} style={styles.navLogo} resizeMode="contain" />
@@ -249,6 +309,7 @@ export default function TeacherHome() {
       </View>
 
     </ScrollView>
+    </View>
   );
 }
 
@@ -348,4 +409,17 @@ const styles = StyleSheet.create({
   bottomBar: { flexDirection: 'row', paddingTop: 14 },
   bottomBarItem: { flex: 1, alignItems: 'center', gap: 4 },
   bottomBarLabel: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  // Drawer
+  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', flexDirection: 'row' },
+  drawer: { width: 280, height: '100%', shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.2, elevation: 10 },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 54, paddingBottom: 16, borderBottomWidth: 1 },
+  drawerLogo: { width: 110, height: 40 },
+  drawerUserRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20 },
+  drawerAvatar: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  drawerUserName: { fontSize: 15, fontWeight: '800' },
+  drawerUserRole: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  drawerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20 },
+  drawerItemText: { fontSize: 15, fontWeight: '600' },
+  drawerLogout: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, marginTop: 'auto', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
 });

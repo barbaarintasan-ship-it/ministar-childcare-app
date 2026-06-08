@@ -1,4 +1,5 @@
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Modal, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { COLORS, getTheme } from '../../src/constants/colors';
-import { ADMIN_STATS, WEEKLY_ATTENDANCE, CHILDREN } from '../../src/data/mockData';
+import * as api from '../../src/lib/api';
 
 const { width } = Dimensions.get('window');
 const BAR_MAX_H = 72;
@@ -25,17 +26,83 @@ export default function AdminDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [stats, setStats] = useState({ totalChildren: 0, totalStaff: 0, presentToday: 0, absentToday: 0, monthlyRevenue: 0, overdueAmount: 0 });
+  const [weeklyAtt, setWeeklyAtt] = useState([]);
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const MENU_ITEMS = [
+    { icon: 'home-outline',          label: 'Dashboard',    route: '/(admin)/' },
+    { icon: 'people-outline',        label: 'Children',     route: '/(admin)/children' },
+    { icon: 'person-circle-outline', label: 'Staff',        route: '/(admin)/staff' },
+    { icon: 'bar-chart-outline',     label: 'Reports',      route: '/(admin)/reports' },
+    { icon: 'cash-outline',          label: 'Billing',      route: '/(admin)/billing' },
+    { icon: 'settings-outline',      label: 'Settings',     route: '/(admin)/settings' },
+  ];
+
+  useEffect(() => {
+    Promise.all([
+      api.getReportsSummary(),
+      api.getWeeklyAttendance(),
+      api.getChildren(),
+    ])
+      .then(([s, w, c]) => { setStats(s); setWeeklyAtt(w); setChildren(c); })
+      .catch(err => console.error('Admin dashboard load error:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
   const overdueCount = 0;
-  const maxPresent   = Math.max(...WEEKLY_ATTENDANCE.map(d => d.present));
+  const maxPresent   = weeklyAtt.length > 0 ? Math.max(...weeklyAtt.map(d => parseInt(d.present) || 0)) : 1;
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const attendancePct = Math.round((ADMIN_STATS.presentToday / ADMIN_STATS.totalChildren) * 100);
+  const attendancePct = stats.totalChildren > 0 ? Math.round((stats.presentToday / stats.totalChildren) * 100) : 0;
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
+        <ActivityIndicator size="large" color={COLORS.admin} />
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.bg }} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <TouchableOpacity style={styles.drawerOverlay} activeOpacity={1} onPress={() => setMenuOpen(false)}>
+          <View style={[styles.drawer, { backgroundColor: theme.card }]}>
+            <View style={[styles.drawerHeader, { borderBottomColor: theme.border }]}>
+              <Image source={require('../../logo.png')} style={styles.drawerLogo} resizeMode="contain" />
+              <TouchableOpacity onPress={() => setMenuOpen(false)}>
+                <Ionicons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.drawerUserRow}>
+              <View style={[styles.drawerAvatar, { backgroundColor: COLORS.admin + '22' }]}>
+                <Text style={{ fontSize: 22 }}>👤</Text>
+              </View>
+              <View>
+                <Text style={[styles.drawerUserName, { color: theme.text }]}>{user?.name}</Text>
+                <Text style={[styles.drawerUserRole, { color: COLORS.admin }]}>Admin</Text>
+              </View>
+            </View>
+            {MENU_ITEMS.map((item, i) => (
+              <TouchableOpacity key={i} style={styles.drawerItem} onPress={() => { setMenuOpen(false); router.push(item.route); }}>
+                <Ionicons name={item.icon} size={20} color={COLORS.admin} style={{ marginRight: 14 }} />
+                <Text style={[styles.drawerItemText, { color: theme.text }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.drawerLogout} onPress={async () => { setMenuOpen(false); await logout(); router.replace('/login'); }}>
+              <Ionicons name="log-out-outline" size={20} color="#ef4444" style={{ marginRight: 14 }} />
+              <Text style={{ color: '#ef4444', fontSize: 15, fontWeight: '600' }}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
       {/* ── NAVBAR (website style) ── */}
       <View style={[styles.navbar, { paddingTop: insets.top + 10, backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity style={styles.navIconBtn}>
+        <TouchableOpacity style={styles.navIconBtn} onPress={() => setMenuOpen(true)}>
           <Ionicons name="menu" size={24} color={theme.text} />
         </TouchableOpacity>
         <Image source={require('../../logo.png')} style={styles.navLogo} resizeMode="contain" />
@@ -76,9 +143,9 @@ export default function AdminDashboard() {
         {/* Snapshot stats (website card style) */}
         <View style={styles.snapshot}>
           {[
-            { value: ADMIN_STATS.presentToday,     label: 'Present',       color: '#d1fae5', text: '#065f46' },
-            { value: ADMIN_STATS.absentToday,       label: 'Absent',        color: '#fee2e2', text: '#991b1b' },
-            { value: ADMIN_STATS.staffOnDuty || 5,  label: 'Staff on Duty', color: '#dbeafe', text: '#1e40af' },
+            { value: stats.presentToday,     label: 'Present',       color: '#d1fae5', text: '#065f46' },
+            { value: stats.absentToday,      label: 'Absent',        color: '#fee2e2', text: '#991b1b' },
+            { value: stats.totalStaff,       label: 'Staff on Duty', color: '#dbeafe', text: '#1e40af' },
             { value: overdueCount,                  label: 'Overdue Bills', color: overdueCount > 0 ? '#fef3c7' : '#d1fae5', text: overdueCount > 0 ? '#92400e' : '#065f46' },
           ].map((s, i) => (
             <View key={i} style={[styles.snapItem, { backgroundColor: s.color }]}>
@@ -130,9 +197,9 @@ export default function AdminDashboard() {
         </Text>
         <View style={styles.kpiGrid}>
           {[
-            { icon: 'people',           label: 'Total Children', value: ADMIN_STATS.totalChildren,        color: COLORS.primary, route: '/(admin)/children' },
-            { icon: 'person',           label: 'Total Staff',    value: ADMIN_STATS.totalStaff,           color: COLORS.teacher, route: '/(admin)/staff'    },
-            { icon: 'checkmark-circle', label: 'Attendance',     value: ADMIN_STATS.attendanceRate + '%', color: '#10b981',      route: '/(admin)/reports'  },
+            { icon: 'people',           label: 'Total Children', value: stats.totalChildren,        color: COLORS.primary, route: '/(admin)/children' },
+            { icon: 'person',           label: 'Total Staff',    value: stats.totalStaff,           color: COLORS.teacher, route: '/(admin)/staff'    },
+            { icon: 'checkmark-circle', label: 'Attendance',     value: attendancePct + '%',        color: '#10b981',      route: '/(admin)/reports'  },
             { icon: 'analytics',        label: 'Reports',        value: 'View',                           color: COLORS.admin,   route: '/(admin)/reports'  },
           ].map((k, i) => (
             <TouchableOpacity
@@ -163,7 +230,7 @@ export default function AdminDashboard() {
             <View style={[styles.attendFill, { width: `${attendancePct}%`, backgroundColor: COLORS.admin }]} />
           </View>
           <Text style={[styles.attendCaption, { color: theme.textMuted }]}>
-            {ADMIN_STATS.presentToday} present · {ADMIN_STATS.absentToday} absent · {ADMIN_STATS.totalChildren} total
+            {stats.presentToday} present · {stats.absentToday} absent · {stats.totalChildren} total
           </Text>
         </View>
 
@@ -171,9 +238,9 @@ export default function AdminDashboard() {
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Attendance</Text>
           <View style={styles.barChart}>
-            {WEEKLY_ATTENDANCE.map((day, i) => {
-              const barH = (day.present / maxPresent) * BAR_MAX_H;
-              const isToday = i === 0;
+            {weeklyAtt.length > 0 ? weeklyAtt.map((day, i) => {
+              const barH = (parseInt(day.present) / maxPresent) * BAR_MAX_H;
+              const isToday = i === weeklyAtt.length - 1;
               return (
                 <View key={i} style={styles.barCol}>
                   <Text style={[styles.barNum, { color: isToday ? COLORS.admin : theme.textMuted }]}>{day.present}</Text>
@@ -188,7 +255,7 @@ export default function AdminDashboard() {
                   </Text>
                 </View>
               );
-            })}
+            }) : <Text style={{ color: theme.textMuted, fontSize: 13 }}>No attendance data yet</Text>}
           </View>
         </View>
 
@@ -215,7 +282,7 @@ export default function AdminDashboard() {
               <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.admin }}>View All →</Text>
             </TouchableOpacity>
           </View>
-          {CHILDREN.slice(0, 5).map((child, i) => {
+          {children.slice(0, 5).map((child, i) => {
             const sc = { checked_in: '#10b981', absent: '#ef4444', checked_out: '#6b7280' }[child.status] || '#6b7280';
             const sb = { checked_in: '#d1fae5', absent: '#fee2e2', checked_out: '#f3f4f6' }[child.status] || '#f3f4f6';
             const sl = { checked_in: '● In', absent: '● Absent', checked_out: '● Out' }[child.status] || '—';
@@ -252,6 +319,7 @@ export default function AdminDashboard() {
       </View>
 
     </ScrollView>
+    </View>
   );
 }
 
@@ -358,4 +426,17 @@ const styles = StyleSheet.create({
   bottomBar: { flexDirection: 'row', paddingTop: 14 },
   bottomBarItem: { flex: 1, alignItems: 'center', gap: 4 },
   bottomBarLabel: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  // Drawer
+  drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', flexDirection: 'row' },
+  drawer: { width: 280, height: '100%', shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.2, elevation: 10 },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 54, paddingBottom: 16, borderBottomWidth: 1 },
+  drawerLogo: { width: 110, height: 40 },
+  drawerUserRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20 },
+  drawerAvatar: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  drawerUserName: { fontSize: 15, fontWeight: '800' },
+  drawerUserRole: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  drawerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20 },
+  drawerItemText: { fontSize: 15, fontWeight: '600' },
+  drawerLogout: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, marginTop: 'auto', borderTopWidth: 1, borderTopColor: '#f3f4f6' },
 });
